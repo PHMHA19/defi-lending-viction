@@ -71,12 +71,12 @@ export const AddressInfoDropdown = ({
               {isAddressCopiedToClipboard ? (
                 <>
                   <CheckCircleIcon className="text-xl font-normal h-6 w-4 ml-2 sm:ml-0" aria-hidden="true" />
-                  <span className="whitespace-nowrap">Copied!</span>
+                  <span className="whitespace-nowrap">Đã sao chép!</span>
                 </>
               ) : (
                 <>
                   <DocumentDuplicateIcon className="text-xl font-normal h-6 w-4 ml-2 sm:ml-0" aria-hidden="true" />
-                  <span className="whitespace-nowrap">Copy address</span>
+                  <span className="whitespace-nowrap">Sao chép địa chỉ ví</span>
                 </>
               )}
             </div>
@@ -84,7 +84,7 @@ export const AddressInfoDropdown = ({
           <li className={selectingNetwork ? "hidden" : ""}>
             <label htmlFor="qrcode-modal" className="h-8 btn-sm rounded-xl! flex gap-3 py-3">
               <QrCodeIcon className="h-6 w-4 ml-2 sm:ml-0" />
-              <span className="whitespace-nowrap">View QR Code</span>
+              <span className="whitespace-nowrap">Xem mã QR</span>
             </label>
           </li>
           <li className={selectingNetwork ? "hidden" : ""}>
@@ -96,7 +96,7 @@ export const AddressInfoDropdown = ({
                 rel="noopener noreferrer"
                 className="whitespace-nowrap"
               >
-                View on Block Explorer
+                Xem trên Block Explorer
               </a>
             </button>
           </li>
@@ -109,7 +109,7 @@ export const AddressInfoDropdown = ({
                   setSelectingNetwork(true);
                 }}
               >
-                <ArrowsRightLeftIcon className="h-6 w-4 ml-2 sm:ml-0" /> <span>Switch Network</span>
+                <ArrowsRightLeftIcon className="h-6 w-4 ml-2 sm:ml-0" /> <span>Chuyển mạng</span>
               </button>
             </li>
           ) : null}
@@ -117,7 +117,7 @@ export const AddressInfoDropdown = ({
             <li>
               <label htmlFor="reveal-burner-pk-modal" className="h-8 btn-sm rounded-xl! flex gap-3 py-3 text-error">
                 <EyeIcon className="h-6 w-4 ml-2 sm:ml-0" />
-                <span>Reveal Private Key</span>
+                <span>Hiển thị Private Key</span>
               </label>
             </li>
           ) : null}
