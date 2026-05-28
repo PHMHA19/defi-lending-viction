@@ -1,8 +1,8 @@
 import { getMetadata } from "~~/utils/scaffold-eth/getMetadata";
 
 export const metadata = getMetadata({
-  title: "Block Explorer",
-  description: "Block Explorer created with 🏗 Scaffold-ETH 2",
+  title: "Trình khám phá blockchain",
+  description: "Hệ thống theo dõi giao dịch blockchain của DeFi Lending Viction",
 });
 
 const BlockExplorerLayout = ({ children }: { children: React.ReactNode }) => {

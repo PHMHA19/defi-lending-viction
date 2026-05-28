@@ -48,13 +48,13 @@ export const AddressStorageTab = ({ address }: { address: Address }) => {
           <pre className="px-5 whitespace-pre-wrap break-words">
             {storage.map((data, i) => (
               <div key={i}>
-                <strong>Storage Slot {i}:</strong> {data}
+                <strong>Ô nhớ {i}:</strong> {data}
               </div>
             ))}
           </pre>
         </div>
       ) : (
-        <div className="text-lg">This contract does not have any variables.</div>
+        <div className="text-lg">Hợp đồng này không có dữ liệu lưu trữ.</div>
       )}
     </div>
   );

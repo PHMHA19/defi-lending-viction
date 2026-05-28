@@ -99,7 +99,7 @@ export const Footer = () => {
               <p className="m-0 text-center">
                 Xây dựng với{" "}
                 <HeartIcon className="inline-block h-4 w-4" />{" "}
-                bằng Solidity & Scaffold-ETH-2
+                bằng Solidity 
               </p>
 
             </div>

@@ -40,28 +40,28 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
   return (
     <div className="container mx-auto mt-10 mb-20 px-10 md:px-0">
       <button className="btn btn-sm btn-primary" onClick={() => router.back()}>
-        Back
+        Quay lại
       </button>
       {transaction ? (
         <div className="overflow-x-auto">
-          <h2 className="text-3xl font-bold mb-4 text-center text-primary-content">Transaction Details</h2>{" "}
+          <h2 className="text-3xl font-bold mb-4 text-center text-primary-content">Chi tiết giao dịch</h2>{" "}
           <table className="table rounded-lg bg-base-100 w-full shadow-lg md:table-lg table-md">
             <tbody>
               <tr>
                 <td>
-                  <strong>Transaction Hash:</strong>
+                  <strong>Mã giao dịch:</strong>
                 </td>
                 <td>{transaction.hash}</td>
               </tr>
               <tr>
                 <td>
-                  <strong>Block Number:</strong>
+                  <strong>Số block:</strong>
                 </td>
                 <td>{Number(transaction.blockNumber)}</td>
               </tr>
               <tr>
                 <td>
-                  <strong>From:</strong>
+                  <strong>Từ:</strong>
                 </td>
                 <td>
                   <Address address={transaction.from} format="long" onlyEnsOrAddress chain={targetNetwork} />
@@ -69,7 +69,7 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
               </tr>
               <tr>
                 <td>
-                  <strong>To:</strong>
+                  <strong>Đến:</strong>
                 </td>
                 <td>
                   {!receipt?.contractAddress ? (
@@ -78,7 +78,7 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
                     )
                   ) : (
                     <span>
-                      Contract Creation:
+                      Tạo smart contract:
                       <Address address={receipt.contractAddress} format="long" onlyEnsOrAddress chain={targetNetwork} />
                     </span>
                   )}
@@ -86,7 +86,7 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
               </tr>
               <tr>
                 <td>
-                  <strong>Value:</strong>
+                  <strong>Giá trị:</strong>
                 </td>
                 <td>
                   {formatEther(transaction.value)} {targetNetwork.nativeCurrency.symbol}
@@ -94,12 +94,12 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
               </tr>
               <tr>
                 <td>
-                  <strong>Function called:</strong>
+                  <strong>Hàm được gọi:</strong>
                 </td>
                 <td>
                   <div className="w-full md:max-w-[600px] lg:max-w-[800px] overflow-x-auto whitespace-nowrap">
                     {functionCalled === "0x" ? (
-                      "This transaction did not call any function."
+                      "Giao dịch này không gọi hàm nào."
                     ) : (
                       <>
                         <span className="mr-2">{getFunctionDetails(transaction)}</span>
@@ -111,13 +111,13 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
               </tr>
               <tr>
                 <td>
-                  <strong>Gas Price:</strong>
+                  <strong>Phí gas:</strong>
                 </td>
                 <td>{formatUnits(transaction.gasPrice || 0n, 9)} Gwei</td>
               </tr>
               <tr>
                 <td>
-                  <strong>Data:</strong>
+                  <strong>Dữ liệu:</strong>
                 </td>
                 <td className="form-control">
                   <textarea
@@ -129,13 +129,13 @@ const TransactionComp = ({ txHash }: { txHash: Hash }) => {
               </tr>
               <tr>
                 <td>
-                  <strong>Logs:</strong>
+                  <strong>Nhật ký:</strong>
                 </td>
                 <td>
                   <ul>
                     {receipt?.logs?.map((log, i) => (
                       <li key={i}>
-                        <strong>Log {i} topics:</strong> {JSON.stringify(log.topics, replacer, 2)}
+                        <strong>Chủ đề log {i}:</strong> {JSON.stringify(log.topics, replacer, 2)}
                       </li>
                     ))}
                   </ul>

@@ -26,7 +26,7 @@ export const AddressComponent = ({
               <div className="flex flex-col gap-1">
                 <Address address={address} format="long" onlyEnsOrAddress chain={targetNetwork} />
                 <div className="flex gap-1 items-center">
-                  <span className="font-bold text-sm">Balance:</span>
+                  <span className="font-bold text-sm">Số dư:</span>
                   <Balance address={address} />
                 </div>
               </div>

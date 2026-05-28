@@ -38,7 +38,7 @@ const Home: NextPage = () => {
 
           <p className="text-center text-lg mt-6">
             Nền tảng mô phỏng giao thức cho vay phi tập trung
-            được xây dựng bằng Solidity, Hardhat và Scaffold-ETH-2.
+            được xây dựng bằng Solidity, Hardhat.
           </p>
 
           <p className="text-center text-lg mt-4">

@@ -14,12 +14,12 @@ export const TransactionsTable = ({ blocks, transactionReceipts }: TransactionsT
         <table className="table text-xl bg-base-100 table-zebra w-full md:table-md table-sm">
           <thead>
             <tr className="rounded-xl text-sm text-base-content">
-              <th className="bg-primary">Transaction Hash</th>
-              <th className="bg-primary">Function Called</th>
-              <th className="bg-primary">Block Number</th>
-              <th className="bg-primary">Time Mined</th>
-              <th className="bg-primary">From</th>
-              <th className="bg-primary">To</th>
+              <th className="bg-primary">Mã giao dịch</th>
+              <th className="bg-primary">Hàm được gọi</th>
+              <th className="bg-primary">Số block</th>
+              <th className="bg-primary">Thời gian xác nhận</th>
+              <th className="bg-primary">Từ</th>
+              <th className="bg-primary">Đến</th>
               <th className="bg-primary text-end">Value ({targetNetwork.nativeCurrency.symbol})</th>
             </tr>
           </thead>
@@ -52,7 +52,7 @@ export const TransactionsTable = ({ blocks, transactionReceipts }: TransactionsT
                       ) : (
                         <div className="relative">
                           <Address address={receipt.contractAddress} size="sm" onlyEnsOrAddress chain={targetNetwork} />
-                          <small className="absolute top-4 left-4">(Contract Creation)</small>
+                          <small className="absolute top-4 left-4">(Tạo smart contract)</small>
                         </div>
                       )}
                     </td>
