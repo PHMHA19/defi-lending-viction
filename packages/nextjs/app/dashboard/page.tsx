@@ -1,64 +1,41 @@
 "use client";
 
-import { useState } from "react";
-import { formatUnits, parseUnits } from "viem";
-import {
-  useScaffoldReadContract,
-  useScaffoldWriteContract,
-} from "~~/hooks/scaffold-eth";
+import { OverviewCards } from "~~/components/dashboard/OverviewCards";
+import { SupplyTable } from "~~/components/dashboard/SupplyTable";
+import { BorrowTable } from "~~/components/dashboard/BorrowTable";
+import { useDashboardData } from "~~/hooks/useDashboardData";
+import { FaucetCard } from "~~/components/dashboard/FaucetCard";
+export default function DashboardPage() {
 
-export default function Dashboard() {
-  const [amount, setAmount] = useState("");
-
-  const { writeContractAsync: mintUSDC } = useScaffoldWriteContract({
-    contractName: "MockUSDC",
-  });
-
-  const { data: totalSupply } = useScaffoldReadContract({
-    contractName: "MockUSDC",
-    functionName: "totalSupply",
-  });
+  const {
+    supplied,
+    borrowed,
+    healthFactor,
+  } = useDashboardData();
 
   return (
-    <div className="p-10">
-      <h1 className="text-4xl font-bold mb-8">
-        Dashboard DeFi Lending
-      </h1>
+    <div className="p-10 max-w-7xl mx-auto">
 
-      <div className="bg-base-200 p-6 rounded-2xl w-full max-w-xl">
-        <p className="text-lg mb-2">
-          Tổng cung:
+      <div className="mb-10">
+        <h1 className="text-5xl font-bold">
+          Dashboard DeFi Lending
+        </h1>
+
+        <p className="opacity-70 mt-2">
+          Quản lý tài sản và khoản vay của bạn
         </p>
-
-        <p className="text-2xl font-bold mb-6">
-          {totalSupply
-            ? Number(formatUnits(totalSupply, 6)).toLocaleString()
-            : "0"} mUSDC
-        </p>
-
-        <input
-          type="number"
-          placeholder="Nhập số USDC"
-          className="input input-bordered w-full mb-4"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-        />
-
-        <button
-          className="btn btn-primary"
-          onClick={async () => {
-            await mintUSDC({
-              functionName: "mint",
-              args: [
-                "0xE55d6FbFD2DA1562187BBc5B874a070a490F410B",
-                parseUnits(amount, 6),
-              ],
-            });
-          }}
-        >
-          Mint USDC
-        </button>
       </div>
+
+      <OverviewCards
+        supplied={supplied}
+        borrowed={borrowed}
+        healthFactor={healthFactor}
+      />
+      <FaucetCard />
+
+      <SupplyTable />
+
+      <BorrowTable />
     </div>
   );
 }
