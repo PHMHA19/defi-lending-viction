@@ -10,12 +10,14 @@ import "./debt/VariableDebtToken.sol";
 import "./libraries/InterestLogic.sol";
 import "./libraries/ValidationLogic.sol";
 import "./libraries/AccountLogic.sol";
-import "./libraries/ReserveLogic.sol";
 import "./libraries/DataTypes.sol";
+import "./libraries/ReserveConfiguration.sol";
 
 import "./oracle/AaveOracle.sol";
 
 import "./core/PoolAddressesProvider.sol";
+
+import "./interest/DefaultReserveInterestRateStrategy.sol";
 
 contract MiniAave {
 
@@ -24,7 +26,8 @@ using SafeERC20 for IERC20;
 using InterestLogic
     for DataTypes.ReserveData;
 
-using ReserveLogic for uint256;
+using ReserveConfiguration
+    for ReserveConfiguration.Map;
 
 uint256 public constant PRECISION =
     1e18;
@@ -125,7 +128,7 @@ event Repay(
 event ReserveDataUpdated(
     address indexed asset,
     uint256 liquidityRate,
-    uint256 borrowRate,
+    uint256 variableBorrowRate,
     uint256 liquidityIndex,
     uint256 borrowIndex
 );
@@ -190,10 +193,11 @@ function _getOracle()
 
 function addReserve(
     address asset,
-    uint256 supplyAPY,
-    uint256 borrowAPY,
+    uint256 liquidityRate,
+    uint256 variableBorrowRate,
     uint256 ltv,
-    uint256 liquidationThreshold
+    uint256 liquidationThreshold,
+    address interestRateStrategy
 )
     external
     onlyConfigurator
@@ -214,16 +218,19 @@ function addReserve(
 
         isActive: true,
 
-        supplyAPY:
-            supplyAPY,
+        currentLiquidityRate:
+            liquidityRate,
 
-        borrowAPY:
-            borrowAPY,
+        currentVariableBorrowRate:
+            variableBorrowRate,
 
-        ltv: ltv,
+        configuration:
+            ReserveConfiguration.Map({
+                data: 0
+            }),
 
-        liquidationThreshold:
-            liquidationThreshold,
+        interestRateStrategyAddress:
+            interestRateStrategy,
 
         liquidityIndex:
             PRECISION,
@@ -236,6 +243,16 @@ function addReserve(
                 block.timestamp
             )
     });
+
+    reserves[asset]
+        .configuration
+        .setLtv(ltv);
+
+    reserves[asset]
+        .configuration
+        .setLiquidationThreshold(
+            liquidationThreshold
+        );
 
     reserveList.push(asset);
 
@@ -275,11 +292,11 @@ function addReserve(
 
 /**
  * ---------------------------------------------------
- * UPDATE INTEREST RATES
+ * UPDATE RESERVE INTEREST RATES
  * ---------------------------------------------------
  */
 
-function updateInterestRates(
+function updateReserveInterestRates(
     address asset
 ) internal {
 
@@ -287,35 +304,78 @@ function updateInterestRates(
         storage reserve =
             reserves[asset];
 
+    /**
+     * ---------------------------------------------------
+     * LOAD STRATEGY
+     * ---------------------------------------------------
+     */
+
+    DefaultReserveInterestRateStrategy
+        strategy =
+            DefaultReserveInterestRateStrategy(
+                reserve
+                    .interestRateStrategyAddress
+            );
+
+    /**
+     * ---------------------------------------------------
+     * UTILIZATION
+     * ---------------------------------------------------
+     */
+
     uint256 utilization =
-        ReserveLogic
-            .utilizationRate(
+        strategy
+            .calculateUtilizationRate(
                 reserve
                     .totalBorrowed,
+
                 reserve
                     .totalSupplied
             );
 
-    reserve.borrowAPY =
-        ReserveLogic
-            .calculateBorrowAPY(
+    /**
+     * ---------------------------------------------------
+     * VARIABLE BORROW RATE
+     * ---------------------------------------------------
+     */
+
+    reserve
+        .currentVariableBorrowRate =
+        strategy
+            .calculateBorrowRate(
                 utilization
             );
 
-    reserve.supplyAPY =
-        ReserveLogic
-            .calculateSupplyAPY(
+    /**
+     * ---------------------------------------------------
+     * LIQUIDITY RATE
+     * ---------------------------------------------------
+     */
+
+    reserve
+        .currentLiquidityRate =
+        strategy
+            .calculateLiquidityRate(
                 reserve
-                    .borrowAPY,
+                    .currentVariableBorrowRate,
+
                 utilization
             );
 
     emit ReserveDataUpdated(
         asset,
-        reserve.supplyAPY,
-        reserve.borrowAPY,
-        reserve.liquidityIndex,
-        reserve.borrowIndex
+
+        reserve
+            .currentLiquidityRate,
+
+        reserve
+            .currentVariableBorrowRate,
+
+        reserve
+            .liquidityIndex,
+
+        reserve
+            .borrowIndex
     );
 }
 
@@ -375,7 +435,7 @@ function supply(
         amount
     );
 
-    updateInterestRates(
+    updateReserveInterestRates(
         asset
     );
 
@@ -447,7 +507,7 @@ function withdraw(
             amount
         );
 
-    updateInterestRates(
+    updateReserveInterestRates(
         asset
     );
 
@@ -534,7 +594,7 @@ function borrow(
             amount
         );
 
-    updateInterestRates(
+    updateReserveInterestRates(
         asset
     );
 
@@ -604,7 +664,7 @@ function repay(
         amount
     );
 
-    updateInterestRates(
+    updateReserveInterestRates(
         asset
     );
 
@@ -798,7 +858,7 @@ function getBorrowPower(
             reserveList[i];
 
         DataTypes.ReserveData
-            memory reserve =
+            storage reserve =
                 reserves[asset];
 
         uint256 supplied =
@@ -822,7 +882,9 @@ function getBorrowPower(
         power +=
             (
                 suppliedUsd *
-                reserve.ltv
+                reserve
+                    .configuration
+                    .getLtv()
             ) / 10000;
     }
 
@@ -858,7 +920,7 @@ function getHealthFactor(
             reserveList[i];
 
         DataTypes.ReserveData
-            memory reserve =
+            storage reserve =
                 reserves[asset];
 
         uint256 supplied =
@@ -883,7 +945,8 @@ function getHealthFactor(
             (
                 suppliedUsd *
                 reserve
-                    .liquidationThreshold
+                    .configuration
+                    .getLiquidationThreshold()
             ) / 10000;
     }
 

@@ -4,6 +4,7 @@ pragma solidity ^0.8.20;
 import "./DataTypes.sol";
 
 library InterestLogic {
+
 uint256 internal constant
     PRECISION = 1e18;
 
@@ -62,10 +63,6 @@ function calculateCompoundedInterest(
     if (exp == 0) {
         return PRECISION;
     }
-
-    /**
-     * simplified compound interest
-     */
 
     uint256 expMinusOne =
         exp - 1;
@@ -138,42 +135,59 @@ function updateState(
     }
 
     /**
-     * liquidity index
+     * ---------------------------------------------------
+     * UPDATE LIQUIDITY INDEX
+     * ---------------------------------------------------
      */
 
     uint256 cumulatedLiquidityInterest =
         calculateLinearInterest(
-            reserve.supplyAPY,
+            reserve
+                .currentLiquidityRate,
+
             reserve
                 .lastUpdateTimestamp
         );
 
     reserve.liquidityIndex =
         (
-            reserve.liquidityIndex *
+            reserve
+                .liquidityIndex *
             cumulatedLiquidityInterest
         ) / PRECISION;
 
     /**
-     * borrow index
+     * ---------------------------------------------------
+     * UPDATE BORROW INDEX
+     * ---------------------------------------------------
      */
 
     uint256 cumulatedBorrowInterest =
         calculateCompoundedInterest(
-            reserve.borrowAPY,
+            reserve
+                .currentVariableBorrowRate,
+
             reserve
                 .lastUpdateTimestamp
         );
 
     reserve.borrowIndex =
         (
-            reserve.borrowIndex *
+            reserve
+                .borrowIndex *
             cumulatedBorrowInterest
         ) / PRECISION;
 
-    reserve.lastUpdateTimestamp =
-        uint40(
-            block.timestamp
-        );
+    /**
+     * ---------------------------------------------------
+     * UPDATE TIMESTAMP
+     * ---------------------------------------------------
+     */
+
+    reserve
+        .lastUpdateTimestamp =
+            uint40(
+                block.timestamp
+            );
 }
 }

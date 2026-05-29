@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-library DataTypes {
+import "./ReserveConfiguration.sol";
 
+library DataTypes {
 /**
  * ---------------------------------------------------
  * RESERVE DATA
@@ -17,13 +18,15 @@ struct ReserveData {
 
     bool isActive;
 
-    uint256 supplyAPY;
+    uint256 currentLiquidityRate;
 
-    uint256 borrowAPY;
+    uint256 currentVariableBorrowRate;
 
-    uint256 ltv;
+    ReserveConfiguration.Map
+        configuration;
 
-    uint256 liquidationThreshold;
+    address
+        interestRateStrategyAddress;
 
     uint256 liquidityIndex;
 
@@ -44,5 +47,4 @@ struct UserReserveData {
 
     uint256 scaledBorrow;
 }
-
 }

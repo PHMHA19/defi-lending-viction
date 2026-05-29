@@ -2,10 +2,12 @@
 pragma solidity ^0.8.20;
 
 import "../MiniAave.sol";
+
 import "../core/PoolAddressesProvider.sol";
 import "../core/ACLManager.sol";
 
 contract PoolConfigurator {
+
 PoolAddressesProvider
     public addressesProvider;
 
@@ -85,20 +87,27 @@ function _getPool()
 
 function initReserve(
     address asset,
-    uint256 supplyAPY,
-    uint256 borrowAPY,
+    uint256 liquidityRate,
+    uint256 variableBorrowRate,
     uint256 ltv,
-    uint256 liquidationThreshold
+    uint256 liquidationThreshold,
+    address interestRateStrategy
 )
     external
     onlyAssetListingAdmin
 {
     _getPool().addReserve(
         asset,
-        supplyAPY,
-        borrowAPY,
+
+        liquidityRate,
+
+        variableBorrowRate,
+
         ltv,
-        liquidationThreshold
+
+        liquidationThreshold,
+
+        interestRateStrategy
     );
 }
 
