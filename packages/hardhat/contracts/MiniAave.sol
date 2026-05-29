@@ -12,6 +12,10 @@ import "./libraries/ValidationLogic.sol";
 import "./libraries/AccountLogic.sol";
 import "./libraries/ReserveLogic.sol";
 
+import "./oracle/AaveOracle.sol";
+
+import "./core/PoolAddressesProvider.sol";
+
 contract MiniAave {
 
 using SafeERC20 for IERC20;
@@ -24,20 +28,45 @@ using ReserveLogic for uint256;
 uint256 public constant PRECISION =
     1e18;
 
+/**
+ * ---------------------------------------------------
+ * ADDRESSES PROVIDER
+ * ---------------------------------------------------
+ */
+
+PoolAddressesProvider
+    public addressesProvider;
+
+/**
+ * ---------------------------------------------------
+ * USER POSITION
+ * ---------------------------------------------------
+ */
+
 struct UserReserveData {
 
     uint256 scaledSupply;
     uint256 scaledBorrow;
 }
 
-// asset => reserve
+/**
+ * ---------------------------------------------------
+ * RESERVES
+ * ---------------------------------------------------
+ */
+
 mapping(
     address =>
         InterestLogic.ReserveData
 )
     public reserves;
 
-// user => asset => position
+/**
+ * ---------------------------------------------------
+ * USER POSITIONS
+ * ---------------------------------------------------
+ */
+
 mapping(
     address =>
         mapping(
@@ -47,14 +76,29 @@ mapping(
 )
     private userPositions;
 
-// list reserves
+/**
+ * ---------------------------------------------------
+ * RESERVE LIST
+ * ---------------------------------------------------
+ */
+
 address[] public reserveList;
 
-// asset => aToken
+/**
+ * ---------------------------------------------------
+ * A TOKENS
+ * ---------------------------------------------------
+ */
+
 mapping(address => address)
     public aTokens;
 
-// asset => debt token
+/**
+ * ---------------------------------------------------
+ * DEBT TOKENS
+ * ---------------------------------------------------
+ */
+
 mapping(address => address)
     public debtTokens;
 
@@ -90,6 +134,58 @@ event Repay(
 
 /**
  * ---------------------------------------------------
+ * ONLY CONFIGURATOR
+ * ---------------------------------------------------
+ */
+
+modifier onlyConfigurator() {
+
+    require(
+        msg.sender ==
+        addressesProvider
+            .getPoolConfigurator(),
+        "ONLY_CONFIGURATOR"
+    );
+
+    _;
+}
+
+/**
+ * ---------------------------------------------------
+ * CONSTRUCTOR
+ * ---------------------------------------------------
+ */
+
+constructor(
+    address provider
+) {
+
+    addressesProvider =
+        PoolAddressesProvider(
+            provider
+        );
+}
+
+/**
+ * ---------------------------------------------------
+ * INTERNAL ORACLE
+ * ---------------------------------------------------
+ */
+
+function _getOracle()
+    internal
+    view
+    returns (AaveOracle)
+{
+    return
+        AaveOracle(
+            addressesProvider
+                .getPriceOracle()
+        );
+}
+
+/**
+ * ---------------------------------------------------
  * ADD RESERVE
  * ---------------------------------------------------
  */
@@ -100,10 +196,14 @@ function addReserve(
     uint256 borrowAPY,
     uint256 ltv,
     uint256 liquidationThreshold
-) external {
+)
+    external
+    onlyConfigurator
+{
 
     require(
-        !reserves[asset].isActive,
+        !reserves[asset]
+            .isActive,
         "RESERVE_EXISTS"
     );
 
@@ -111,14 +211,19 @@ function addReserve(
         InterestLogic.ReserveData({
 
         totalSupplied: 0,
+
         totalBorrowed: 0,
 
         isActive: true,
 
-        supplyAPY: supplyAPY,
-        borrowAPY: borrowAPY,
+        supplyAPY:
+            supplyAPY,
+
+        borrowAPY:
+            borrowAPY,
 
         ltv: ltv,
+
         liquidationThreshold:
             liquidationThreshold,
 
@@ -134,7 +239,12 @@ function addReserve(
 
     reserveList.push(asset);
 
-    // deploy aToken
+    /**
+     * ---------------------------------------------------
+     * CREATE A TOKEN
+     * ---------------------------------------------------
+     */
+
     AToken aToken =
         new AToken(
             "Aave Interest Token",
@@ -145,13 +255,19 @@ function addReserve(
     aTokens[asset] =
         address(aToken);
 
-    // deploy debt token
-    VariableDebtToken debtToken =
-        new VariableDebtToken(
-            "Variable Debt Token",
-            "vdTOKEN",
-            address(this)
-        );
+    /**
+     * ---------------------------------------------------
+     * CREATE DEBT TOKEN
+     * ---------------------------------------------------
+     */
+
+    VariableDebtToken
+        debtToken =
+            new VariableDebtToken(
+                "Variable Debt Token",
+                "vdTOKEN",
+                address(this)
+            );
 
     debtTokens[asset] =
         address(debtToken);
@@ -174,8 +290,10 @@ function updateInterestRates(
     uint256 utilization =
         ReserveLogic
             .utilizationRate(
-                reserve.totalBorrowed,
-                reserve.totalSupplied
+                reserve
+                    .totalBorrowed,
+                reserve
+                    .totalSupplied
             );
 
     reserve.borrowAPY =
@@ -187,7 +305,8 @@ function updateInterestRates(
     reserve.supplyAPY =
         ReserveLogic
             .calculateSupplyAPY(
-                reserve.borrowAPY,
+                reserve
+                    .borrowAPY,
                 utilization
             );
 }
@@ -217,25 +336,36 @@ function supply(
     ValidationLogic
         .validateAmount(amount);
 
-    IERC20(asset).safeTransferFrom(
-        msg.sender,
-        address(this),
-        amount
-    );
+    IERC20(asset)
+        .safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
 
     uint256 scaledAmount =
         (
             amount *
             PRECISION
-        ) / reserve.liquidityIndex;
+        ) /
+        reserve
+            .liquidityIndex;
 
-    userPositions[msg.sender][asset]
+    userPositions[
+        msg.sender
+    ][asset]
         .scaledSupply +=
             scaledAmount;
 
-    reserve.totalSupplied += amount;
+    reserve.totalSupplied +=
+        amount;
 
-    // mint aToken
+    /**
+     * ---------------------------------------------------
+     * MINT A TOKEN
+     * ---------------------------------------------------
+     */
+
     AToken(
         aTokens[asset]
     ).mint(
@@ -243,7 +373,9 @@ function supply(
         amount
     );
 
-    updateInterestRates(asset);
+    updateInterestRates(
+        asset
+    );
 
     emit Supply(
         msg.sender,
@@ -271,7 +403,9 @@ function withdraw(
 
     UserReserveData
         storage user =
-            userPositions[msg.sender][asset];
+            userPositions[
+                msg.sender
+            ][asset];
 
     uint256 actualSupply =
         getUserSupply(
@@ -288,14 +422,22 @@ function withdraw(
         (
             amount *
             PRECISION
-        ) / reserve.liquidityIndex;
+        ) /
+        reserve
+            .liquidityIndex;
 
     user.scaledSupply -=
         scaledAmount;
 
-    reserve.totalSupplied -= amount;
+    reserve.totalSupplied -=
+        amount;
 
-    // burn aToken
+    /**
+     * ---------------------------------------------------
+     * BURN A TOKEN
+     * ---------------------------------------------------
+     */
+
     AToken(
         aTokens[asset]
     ).burn(
@@ -303,12 +445,15 @@ function withdraw(
         amount
     );
 
-    IERC20(asset).safeTransfer(
-        msg.sender,
-        amount
-    );
+    IERC20(asset)
+        .safeTransfer(
+            msg.sender,
+            amount
+        );
 
-    updateInterestRates(asset);
+    updateInterestRates(
+        asset
+    );
 
     emit Withdraw(
         msg.sender,
@@ -341,7 +486,8 @@ function borrow(
 
     ValidationLogic
         .validateLiquidity(
-            reserve.totalSupplied,
+            reserve
+                .totalSupplied,
             amount
         );
 
@@ -366,15 +512,25 @@ function borrow(
         (
             amount *
             PRECISION
-        ) / reserve.borrowIndex;
+        ) /
+        reserve
+            .borrowIndex;
 
-    userPositions[msg.sender][asset]
+    userPositions[
+        msg.sender
+    ][asset]
         .scaledBorrow +=
             scaledBorrow;
 
-    reserve.totalBorrowed += amount;
+    reserve.totalBorrowed +=
+        amount;
 
-    // mint debt token
+    /**
+     * ---------------------------------------------------
+     * MINT DEBT TOKEN
+     * ---------------------------------------------------
+     */
+
     VariableDebtToken(
         debtTokens[asset]
     ).mint(
@@ -382,12 +538,15 @@ function borrow(
         amount
     );
 
-    IERC20(asset).safeTransfer(
-        msg.sender,
-        amount
-    );
+    IERC20(asset)
+        .safeTransfer(
+            msg.sender,
+            amount
+        );
 
-    updateInterestRates(asset);
+    updateInterestRates(
+        asset
+    );
 
     emit Borrow(
         msg.sender,
@@ -424,25 +583,36 @@ function repay(
         "INVALID_REPAY"
     );
 
-    IERC20(asset).safeTransferFrom(
-        msg.sender,
-        address(this),
-        amount
-    );
+    IERC20(asset)
+        .safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
 
     uint256 scaledAmount =
         (
             amount *
             PRECISION
-        ) / reserve.borrowIndex;
+        ) /
+        reserve
+            .borrowIndex;
 
-    userPositions[msg.sender][asset]
+    userPositions[
+        msg.sender
+    ][asset]
         .scaledBorrow -=
             scaledAmount;
 
-    reserve.totalBorrowed -= amount;
+    reserve.totalBorrowed -=
+        amount;
 
-    // burn debt token
+    /**
+     * ---------------------------------------------------
+     * BURN DEBT TOKEN
+     * ---------------------------------------------------
+     */
+
     VariableDebtToken(
         debtTokens[asset]
     ).burn(
@@ -450,7 +620,9 @@ function repay(
         amount
     );
 
-    updateInterestRates(asset);
+    updateInterestRates(
+        asset
+    );
 
     emit Repay(
         msg.sender,
@@ -473,8 +645,11 @@ function getUserSupply(
     view
     returns (uint256)
 {
-    UserReserveData memory position =
-        userPositions[user][asset];
+    UserReserveData
+        memory position =
+            userPositions[
+                user
+            ][asset];
 
     InterestLogic.ReserveData
         memory reserve =
@@ -482,8 +657,10 @@ function getUserSupply(
 
     return
         (
-            position.scaledSupply *
-            reserve.liquidityIndex
+            position
+                .scaledSupply *
+            reserve
+                .liquidityIndex
         ) / PRECISION;
 }
 
@@ -501,8 +678,11 @@ function getUserBorrow(
     view
     returns (uint256)
 {
-    UserReserveData memory position =
-        userPositions[user][asset];
+    UserReserveData
+        memory position =
+            userPositions[
+                user
+            ][asset];
 
     InterestLogic.ReserveData
         memory reserve =
@@ -510,8 +690,10 @@ function getUserBorrow(
 
     return
         (
-            position.scaledBorrow *
-            reserve.borrowIndex
+            position
+                .scaledBorrow *
+            reserve
+                .borrowIndex
         ) / PRECISION;
 }
 
@@ -535,11 +717,27 @@ function getTotalCollateral(
         i < reserveList.length;
         i++
     ) {
-        total +=
+
+        address asset =
+            reserveList[i];
+
+        uint256 amount =
             getUserSupply(
                 user,
-                reserveList[i]
+                asset
             );
+
+        uint256 price =
+            _getOracle()
+                .getAssetPrice(
+                    asset
+                );
+
+        total +=
+            (
+                amount *
+                price
+            ) / PRECISION;
     }
 
     return total;
@@ -565,11 +763,27 @@ function getTotalDebt(
         i < reserveList.length;
         i++
     ) {
-        total +=
+
+        address asset =
+            reserveList[i];
+
+        uint256 amount =
             getUserBorrow(
                 user,
-                reserveList[i]
+                asset
             );
+
+        uint256 price =
+            _getOracle()
+                .getAssetPrice(
+                    asset
+                );
+
+        total +=
+            (
+                amount *
+                price
+            ) / PRECISION;
     }
 
     return total;
@@ -609,9 +823,21 @@ function getBorrowPower(
                 asset
             );
 
-        power +=
+        uint256 price =
+            _getOracle()
+                .getAssetPrice(
+                    asset
+                );
+
+        uint256 suppliedUsd =
             (
                 supplied *
+                price
+            ) / PRECISION;
+
+        power +=
+            (
+                suppliedUsd *
                 reserve.ltv
             ) / 10000;
     }
@@ -635,7 +861,8 @@ function getHealthFactor(
     uint256 debt =
         getTotalDebt(user);
 
-    uint256 liquidationPower = 0;
+    uint256 liquidationPower =
+        0;
 
     for (
         uint256 i = 0;
@@ -656,9 +883,21 @@ function getHealthFactor(
                 asset
             );
 
-        liquidationPower +=
+        uint256 price =
+            _getOracle()
+                .getAssetPrice(
+                    asset
+                );
+
+        uint256 suppliedUsd =
             (
                 supplied *
+                price
+            ) / PRECISION;
+
+        liquidationPower +=
+            (
+                suppliedUsd *
                 reserve
                     .liquidationThreshold
             ) / 10000;
@@ -691,23 +930,33 @@ function getUserAccountData(
     )
 {
     uint256 collateral =
-        getTotalCollateral(user);
+        getTotalCollateral(
+            user
+        );
 
     uint256 debt =
-        getTotalDebt(user);
+        getTotalDebt(
+            user
+        );
 
     uint256 borrowPower =
-        getBorrowPower(user);
+        getBorrowPower(
+            user
+        );
 
     uint256 hf =
-        getHealthFactor(user);
+        getHealthFactor(
+            user
+        );
 
     return (
         collateral,
         debt,
+
         borrowPower > debt
             ? borrowPower - debt
             : 0,
+
         hf
     );
 }
