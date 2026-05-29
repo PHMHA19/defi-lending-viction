@@ -5,13 +5,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./AToken.sol";
+
 import "./debt/VariableDebtToken.sol";
 
 import "./libraries/InterestLogic.sol";
 import "./libraries/ValidationLogic.sol";
-import "./libraries/AccountLogic.sol";
 import "./libraries/DataTypes.sol";
 import "./libraries/ReserveConfiguration.sol";
+import "./libraries/UserConfiguration.sol";
+import "./libraries/GenericLogic.sol";
 
 import "./oracle/AaveOracle.sol";
 
@@ -28,6 +30,9 @@ using InterestLogic
 
 using ReserveConfiguration
     for ReserveConfiguration.Map;
+
+using UserConfiguration
+    for UserConfiguration.Map;
 
 uint256 public constant PRECISION =
     1e18;
@@ -68,6 +73,18 @@ mapping(
         )
 )
     private userPositions;
+
+/**
+ * ---------------------------------------------------
+ * USER CONFIG
+ * ---------------------------------------------------
+ */
+
+mapping(
+    address =>
+        UserConfiguration.Map
+)
+    internal userConfig;
 
 /**
  * ---------------------------------------------------
@@ -187,6 +204,61 @@ function _getOracle()
 
 /**
  * ---------------------------------------------------
+ * INTERNAL PRICE
+ * ---------------------------------------------------
+ */
+
+function _getAssetPrice(
+    address asset
+)
+    internal
+    view
+    returns (uint256)
+{
+    return
+        _getOracle()
+            .getAssetPrice(
+                asset
+            );
+}
+
+/**
+ * ---------------------------------------------------
+ * INTERNAL ACCOUNT DATA
+ * ---------------------------------------------------
+ */
+
+function _getUserAccountData(
+    address user
+)
+    internal
+    view
+    returns (
+        GenericLogic
+            .UserAccountData
+                memory
+    )
+{
+    return
+        GenericLogic
+            .calculateUserAccountData(
+
+                reserves,
+
+                reserveList,
+
+                userPositions,
+
+                userConfig,
+
+                user,
+
+                _getAssetPrice
+            );
+}
+
+/**
+ * ---------------------------------------------------
  * ADD RESERVE
  * ---------------------------------------------------
  */
@@ -211,6 +283,11 @@ function addReserve(
 
     reserves[asset] =
         DataTypes.ReserveData({
+
+        id:
+            uint16(
+                reserveList.length
+            ),
 
         totalSupplied: 0,
 
@@ -252,6 +329,22 @@ function addReserve(
         .configuration
         .setLiquidationThreshold(
             liquidationThreshold
+        );
+
+    reserves[asset]
+        .configuration
+        .setLiquidationBonus(
+            10500
+        );
+
+    reserves[asset]
+        .configuration
+        .setActive(true);
+
+    reserves[asset]
+        .configuration
+        .setBorrowingEnabled(
+            true
         );
 
     reserveList.push(asset);
@@ -304,24 +397,12 @@ function updateReserveInterestRates(
         storage reserve =
             reserves[asset];
 
-    /**
-     * ---------------------------------------------------
-     * LOAD STRATEGY
-     * ---------------------------------------------------
-     */
-
     DefaultReserveInterestRateStrategy
         strategy =
             DefaultReserveInterestRateStrategy(
                 reserve
                     .interestRateStrategyAddress
             );
-
-    /**
-     * ---------------------------------------------------
-     * UTILIZATION
-     * ---------------------------------------------------
-     */
 
     uint256 utilization =
         strategy
@@ -333,24 +414,12 @@ function updateReserveInterestRates(
                     .totalSupplied
             );
 
-    /**
-     * ---------------------------------------------------
-     * VARIABLE BORROW RATE
-     * ---------------------------------------------------
-     */
-
     reserve
         .currentVariableBorrowRate =
         strategy
             .calculateBorrowRate(
                 utilization
             );
-
-    /**
-     * ---------------------------------------------------
-     * LIQUIDITY RATE
-     * ---------------------------------------------------
-     */
 
     reserve
         .currentLiquidityRate =
@@ -396,13 +465,11 @@ function supply(
 
     reserve.updateState();
 
-    require(
-        reserve.isActive,
-        "RESERVE_INACTIVE"
-    );
-
     ValidationLogic
-        .validateAmount(amount);
+        .validateSupply(
+            reserve,
+            amount
+        );
 
     IERC20(asset)
         .safeTransferFrom(
@@ -424,6 +491,12 @@ function supply(
     ][asset]
         .scaledSupply +=
             scaledAmount;
+
+    userConfig[msg.sender]
+        .setUsingAsCollateral(
+            reserve.id,
+            true
+        );
 
     reserve.totalSupplied +=
         amount;
@@ -463,22 +536,17 @@ function withdraw(
 
     reserve.updateState();
 
-    DataTypes.UserReserveData
-        storage user =
-            userPositions[
-                msg.sender
-            ][asset];
-
     uint256 actualSupply =
         getUserSupply(
             msg.sender,
             asset
         );
 
-    require(
-        actualSupply >= amount,
-        "INSUFFICIENT_BALANCE"
-    );
+    ValidationLogic
+        .validateWithdraw(
+            actualSupply,
+            amount
+        );
 
     uint256 scaledAmount =
         (
@@ -488,8 +556,25 @@ function withdraw(
         reserve
             .liquidityIndex;
 
-    user.scaledSupply -=
-        scaledAmount;
+    userPositions[
+        msg.sender
+    ][asset]
+        .scaledSupply -=
+            scaledAmount;
+
+    if (
+        userPositions[
+            msg.sender
+        ][asset]
+            .scaledSupply == 0
+    ) {
+
+        userConfig[msg.sender]
+            .setUsingAsCollateral(
+                reserve.id,
+                false
+            );
+    }
 
     reserve.totalSupplied -=
         amount;
@@ -505,6 +590,22 @@ function withdraw(
         .safeTransfer(
             msg.sender,
             amount
+        );
+
+    /**
+     * ---------------------------------------------------
+     * HEALTH FACTOR CHECK
+     * ---------------------------------------------------
+     */
+
+    uint256 healthFactor =
+        _getUserAccountData(
+            msg.sender
+        ).healthFactor;
+
+    ValidationLogic
+        .validateHealthFactor(
+            healthFactor
         );
 
     updateReserveInterestRates(
@@ -535,32 +636,17 @@ function borrow(
 
     reserve.updateState();
 
-    require(
-        reserve.isActive,
-        "RESERVE_INACTIVE"
-    );
+    GenericLogic
+        .UserAccountData
+            memory accountData =
+                _getUserAccountData(
+                    msg.sender
+                );
 
     ValidationLogic
-        .validateLiquidity(
-            reserve
-                .totalSupplied,
-            amount
-        );
-
-    uint256 totalDebt =
-        getTotalDebt(
-            msg.sender
-        );
-
-    uint256 borrowPower =
-        getBorrowPower(
-            msg.sender
-        );
-
-    ValidationLogic
-        .validateCollateral(
-            borrowPower,
-            totalDebt,
+        .validateBorrow(
+            reserve,
+            accountData,
             amount
         );
 
@@ -577,6 +663,12 @@ function borrow(
     ][asset]
         .scaledBorrow +=
             scaledBorrow;
+
+    userConfig[msg.sender]
+        .setBorrowing(
+            reserve.id,
+            true
+        );
 
     reserve.totalBorrowed +=
         amount;
@@ -628,10 +720,11 @@ function repay(
             asset
         );
 
-    require(
-        actualDebt >= amount,
-        "INVALID_REPAY"
-    );
+    ValidationLogic
+        .validateRepay(
+            actualDebt,
+            amount
+        );
 
     IERC20(asset)
         .safeTransferFrom(
@@ -653,6 +746,20 @@ function repay(
     ][asset]
         .scaledBorrow -=
             scaledAmount;
+
+    if (
+        userPositions[
+            msg.sender
+        ][asset]
+            .scaledBorrow == 0
+    ) {
+
+        userConfig[msg.sender]
+            .setBorrowing(
+                reserve.id,
+                false
+            );
+    }
 
     reserve.totalBorrowed -=
         amount;
@@ -743,156 +850,6 @@ function getUserBorrow(
 
 /**
  * ---------------------------------------------------
- * TOTAL COLLATERAL
- * ---------------------------------------------------
- */
-
-function getTotalCollateral(
-    address user
-)
-    public
-    view
-    returns (uint256)
-{
-    uint256 total = 0;
-
-    for (
-        uint256 i = 0;
-        i < reserveList.length;
-        i++
-    ) {
-
-        address asset =
-            reserveList[i];
-
-        uint256 amount =
-            getUserSupply(
-                user,
-                asset
-            );
-
-        uint256 price =
-            _getOracle()
-                .getAssetPrice(
-                    asset
-                );
-
-        total +=
-            (
-                amount *
-                price
-            ) / PRECISION;
-    }
-
-    return total;
-}
-
-/**
- * ---------------------------------------------------
- * TOTAL DEBT
- * ---------------------------------------------------
- */
-
-function getTotalDebt(
-    address user
-)
-    public
-    view
-    returns (uint256)
-{
-    uint256 total = 0;
-
-    for (
-        uint256 i = 0;
-        i < reserveList.length;
-        i++
-    ) {
-
-        address asset =
-            reserveList[i];
-
-        uint256 amount =
-            getUserBorrow(
-                user,
-                asset
-            );
-
-        uint256 price =
-            _getOracle()
-                .getAssetPrice(
-                    asset
-                );
-
-        total +=
-            (
-                amount *
-                price
-            ) / PRECISION;
-    }
-
-    return total;
-}
-
-/**
- * ---------------------------------------------------
- * BORROW POWER
- * ---------------------------------------------------
- */
-
-function getBorrowPower(
-    address user
-)
-    public
-    view
-    returns (uint256)
-{
-    uint256 power = 0;
-
-    for (
-        uint256 i = 0;
-        i < reserveList.length;
-        i++
-    ) {
-
-        address asset =
-            reserveList[i];
-
-        DataTypes.ReserveData
-            storage reserve =
-                reserves[asset];
-
-        uint256 supplied =
-            getUserSupply(
-                user,
-                asset
-            );
-
-        uint256 price =
-            _getOracle()
-                .getAssetPrice(
-                    asset
-                );
-
-        uint256 suppliedUsd =
-            (
-                supplied *
-                price
-            ) / PRECISION;
-
-        power +=
-            (
-                suppliedUsd *
-                reserve
-                    .configuration
-                    .getLtv()
-            ) / 10000;
-    }
-
-    return power;
-}
-
-/**
- * ---------------------------------------------------
  * HEALTH FACTOR
  * ---------------------------------------------------
  */
@@ -904,58 +861,10 @@ function getHealthFactor(
     view
     returns (uint256)
 {
-    uint256 debt =
-        getTotalDebt(user);
-
-    uint256 liquidationPower =
-        0;
-
-    for (
-        uint256 i = 0;
-        i < reserveList.length;
-        i++
-    ) {
-
-        address asset =
-            reserveList[i];
-
-        DataTypes.ReserveData
-            storage reserve =
-                reserves[asset];
-
-        uint256 supplied =
-            getUserSupply(
-                user,
-                asset
-            );
-
-        uint256 price =
-            _getOracle()
-                .getAssetPrice(
-                    asset
-                );
-
-        uint256 suppliedUsd =
-            (
-                supplied *
-                price
-            ) / PRECISION;
-
-        liquidationPower +=
-            (
-                suppliedUsd *
-                reserve
-                    .configuration
-                    .getLiquidationThreshold()
-            ) / 10000;
-    }
-
     return
-        AccountLogic
-            .calculateHealthFactor(
-                liquidationPower,
-                debt
-            );
+        _getUserAccountData(
+            user
+        ).healthFactor;
 }
 
 /**
@@ -970,41 +879,33 @@ function getUserAccountData(
     external
     view
     returns (
-        uint256 totalCollateral,
-        uint256 totalDebt,
-        uint256 availableBorrow,
+        uint256 totalCollateralBase,
+        uint256 totalDebtBase,
+        uint256 availableBorrowsBase,
+        uint256 currentLiquidationThreshold,
+        uint256 ltv,
         uint256 healthFactor
     )
 {
-    uint256 collateral =
-        getTotalCollateral(
-            user
-        );
-
-    uint256 debt =
-        getTotalDebt(
-            user
-        );
-
-    uint256 borrowPower =
-        getBorrowPower(
-            user
-        );
-
-    uint256 hf =
-        getHealthFactor(
-            user
-        );
+    GenericLogic
+        .UserAccountData
+            memory data =
+                _getUserAccountData(
+                    user
+                );
 
     return (
-        collateral,
-        debt,
+        data.totalCollateralBase,
 
-        borrowPower > debt
-            ? borrowPower - debt
-            : 0,
+        data.totalDebtBase,
 
-        hf
+        data.availableBorrowsBase,
+
+        data.currentLiquidationThreshold,
+
+        data.ltv,
+
+        data.healthFactor
     );
 }
 
