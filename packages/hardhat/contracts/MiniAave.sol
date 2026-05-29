@@ -11,6 +11,7 @@ import "./libraries/InterestLogic.sol";
 import "./libraries/ValidationLogic.sol";
 import "./libraries/AccountLogic.sol";
 import "./libraries/ReserveLogic.sol";
+import "./libraries/DataTypes.sol";
 
 import "./oracle/AaveOracle.sol";
 
@@ -21,7 +22,7 @@ contract MiniAave {
 using SafeERC20 for IERC20;
 
 using InterestLogic
-    for InterestLogic.ReserveData;
+    for DataTypes.ReserveData;
 
 using ReserveLogic for uint256;
 
@@ -39,25 +40,13 @@ PoolAddressesProvider
 
 /**
  * ---------------------------------------------------
- * USER POSITION
- * ---------------------------------------------------
- */
-
-struct UserReserveData {
-
-    uint256 scaledSupply;
-    uint256 scaledBorrow;
-}
-
-/**
- * ---------------------------------------------------
  * RESERVES
  * ---------------------------------------------------
  */
 
 mapping(
     address =>
-        InterestLogic.ReserveData
+        DataTypes.ReserveData
 )
     public reserves;
 
@@ -71,7 +60,8 @@ mapping(
     address =>
         mapping(
             address =>
-                UserReserveData
+                DataTypes
+                    .UserReserveData
         )
 )
     private userPositions;
@@ -130,6 +120,14 @@ event Repay(
     address indexed user,
     address indexed asset,
     uint256 amount
+);
+
+event ReserveDataUpdated(
+    address indexed asset,
+    uint256 liquidityRate,
+    uint256 borrowRate,
+    uint256 liquidityIndex,
+    uint256 borrowIndex
 );
 
 /**
@@ -208,7 +206,7 @@ function addReserve(
     );
 
     reserves[asset] =
-        InterestLogic.ReserveData({
+        DataTypes.ReserveData({
 
         totalSupplied: 0,
 
@@ -234,7 +232,9 @@ function addReserve(
             PRECISION,
 
         lastUpdateTimestamp:
-            block.timestamp
+            uint40(
+                block.timestamp
+            )
     });
 
     reserveList.push(asset);
@@ -283,7 +283,7 @@ function updateInterestRates(
     address asset
 ) internal {
 
-    InterestLogic.ReserveData
+    DataTypes.ReserveData
         storage reserve =
             reserves[asset];
 
@@ -309,6 +309,14 @@ function updateInterestRates(
                     .borrowAPY,
                 utilization
             );
+
+    emit ReserveDataUpdated(
+        asset,
+        reserve.supplyAPY,
+        reserve.borrowAPY,
+        reserve.liquidityIndex,
+        reserve.borrowIndex
+    );
 }
 
 /**
@@ -322,11 +330,11 @@ function supply(
     uint256 amount
 ) external {
 
-    InterestLogic.ReserveData
+    DataTypes.ReserveData
         storage reserve =
             reserves[asset];
 
-    reserve.updateIndexes();
+    reserve.updateState();
 
     require(
         reserve.isActive,
@@ -360,12 +368,6 @@ function supply(
     reserve.totalSupplied +=
         amount;
 
-    /**
-     * ---------------------------------------------------
-     * MINT A TOKEN
-     * ---------------------------------------------------
-     */
-
     AToken(
         aTokens[asset]
     ).mint(
@@ -395,13 +397,13 @@ function withdraw(
     uint256 amount
 ) external {
 
-    InterestLogic.ReserveData
+    DataTypes.ReserveData
         storage reserve =
             reserves[asset];
 
-    reserve.updateIndexes();
+    reserve.updateState();
 
-    UserReserveData
+    DataTypes.UserReserveData
         storage user =
             userPositions[
                 msg.sender
@@ -431,12 +433,6 @@ function withdraw(
 
     reserve.totalSupplied -=
         amount;
-
-    /**
-     * ---------------------------------------------------
-     * BURN A TOKEN
-     * ---------------------------------------------------
-     */
 
     AToken(
         aTokens[asset]
@@ -473,11 +469,11 @@ function borrow(
     uint256 amount
 ) external {
 
-    InterestLogic.ReserveData
+    DataTypes.ReserveData
         storage reserve =
             reserves[asset];
 
-    reserve.updateIndexes();
+    reserve.updateState();
 
     require(
         reserve.isActive,
@@ -525,12 +521,6 @@ function borrow(
     reserve.totalBorrowed +=
         amount;
 
-    /**
-     * ---------------------------------------------------
-     * MINT DEBT TOKEN
-     * ---------------------------------------------------
-     */
-
     VariableDebtToken(
         debtTokens[asset]
     ).mint(
@@ -566,11 +556,11 @@ function repay(
     uint256 amount
 ) external {
 
-    InterestLogic.ReserveData
+    DataTypes.ReserveData
         storage reserve =
             reserves[asset];
 
-    reserve.updateIndexes();
+    reserve.updateState();
 
     uint256 actualDebt =
         getUserBorrow(
@@ -607,12 +597,6 @@ function repay(
     reserve.totalBorrowed -=
         amount;
 
-    /**
-     * ---------------------------------------------------
-     * BURN DEBT TOKEN
-     * ---------------------------------------------------
-     */
-
     VariableDebtToken(
         debtTokens[asset]
     ).burn(
@@ -645,13 +629,13 @@ function getUserSupply(
     view
     returns (uint256)
 {
-    UserReserveData
+    DataTypes.UserReserveData
         memory position =
             userPositions[
                 user
             ][asset];
 
-    InterestLogic.ReserveData
+    DataTypes.ReserveData
         memory reserve =
             reserves[asset];
 
@@ -678,13 +662,13 @@ function getUserBorrow(
     view
     returns (uint256)
 {
-    UserReserveData
+    DataTypes.UserReserveData
         memory position =
             userPositions[
                 user
             ][asset];
 
-    InterestLogic.ReserveData
+    DataTypes.ReserveData
         memory reserve =
             reserves[asset];
 
@@ -813,7 +797,7 @@ function getBorrowPower(
         address asset =
             reserveList[i];
 
-        InterestLogic.ReserveData
+        DataTypes.ReserveData
             memory reserve =
                 reserves[asset];
 
@@ -873,7 +857,7 @@ function getHealthFactor(
         address asset =
             reserveList[i];
 
-        InterestLogic.ReserveData
+        DataTypes.ReserveData
             memory reserve =
                 reserves[asset];
 

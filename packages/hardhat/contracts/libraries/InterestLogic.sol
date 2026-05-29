@@ -1,78 +1,179 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./DataTypes.sol";
+
 library InterestLogic {
+uint256 internal constant
+    PRECISION = 1e18;
 
-    uint256 internal constant
-        PRECISION = 1e18;
+uint256 internal constant
+    YEAR = 365 days;
 
-    uint256 internal constant
-        YEAR = 365 days;
+/**
+ * ---------------------------------------------------
+ * CALCULATE LINEAR INTEREST
+ * ---------------------------------------------------
+ */
 
-    struct ReserveData {
+function calculateLinearInterest(
+    uint256 rate,
+    uint40 lastUpdateTimestamp
+)
+    internal
+    view
+    returns (uint256)
+{
+    uint256 timeDifference =
+        block.timestamp -
+        uint256(
+            lastUpdateTimestamp
+        );
 
-        uint256 totalSupplied;
-        uint256 totalBorrowed;
+    return
+        PRECISION +
 
-        bool isActive;
+        (
+            rate *
+            timeDifference
+        ) / YEAR;
+}
 
-        uint256 supplyAPY;
-        uint256 borrowAPY;
+/**
+ * ---------------------------------------------------
+ * CALCULATE COMPOUNDED INTEREST
+ * ---------------------------------------------------
+ */
 
-        uint256 ltv;
-        uint256 liquidationThreshold;
+function calculateCompoundedInterest(
+    uint256 rate,
+    uint40 lastUpdateTimestamp
+)
+    internal
+    view
+    returns (uint256)
+{
+    uint256 exp =
+        block.timestamp -
+        uint256(
+            lastUpdateTimestamp
+        );
 
-        uint256 liquidityIndex;
-        uint256 borrowIndex;
-
-        uint256 lastUpdateTimestamp;
+    if (exp == 0) {
+        return PRECISION;
     }
 
     /**
-     * ---------------------------------------------------
-     * UPDATE INDEXES
-     * ---------------------------------------------------
+     * simplified compound interest
      */
 
-    function updateIndexes(
-        ReserveData storage reserve
-    ) internal {
+    uint256 expMinusOne =
+        exp - 1;
 
-        uint256 timeElapsed =
-            block.timestamp -
-            reserve.lastUpdateTimestamp;
+    uint256 expMinusTwo =
+        exp > 2
+            ? exp - 2
+            : 0;
 
-        if (timeElapsed == 0) {
-            return;
-        }
+    uint256 ratePerSecond =
+        rate / YEAR;
 
-        uint256 supplyInterest =
-            (
-                reserve.supplyAPY *
-                timeElapsed *
-                PRECISION
-            ) / (10000 * YEAR);
+    uint256 basePowerTwo =
+        (
+            ratePerSecond *
+            ratePerSecond
+        ) / PRECISION;
 
-        uint256 borrowInterest =
-            (
-                reserve.borrowAPY *
-                timeElapsed *
-                PRECISION
-            ) / (10000 * YEAR);
+    uint256 basePowerThree =
+        (
+            basePowerTwo *
+            ratePerSecond
+        ) / PRECISION;
 
-        reserve.liquidityIndex +=
-            (
-                reserve.liquidityIndex *
-                supplyInterest
-            ) / PRECISION;
+    uint256 secondTerm =
+        (
+            exp *
+            expMinusOne *
+            basePowerTwo
+        ) / 2;
 
-        reserve.borrowIndex +=
-            (
-                reserve.borrowIndex *
-                borrowInterest
-            ) / PRECISION;
+    uint256 thirdTerm =
+        (
+            exp *
+            expMinusOne *
+            expMinusTwo *
+            basePowerThree
+        ) / 6;
 
-        reserve.lastUpdateTimestamp =
-            block.timestamp;
+    return
+        PRECISION +
+
+        (
+            ratePerSecond *
+            exp
+        ) +
+
+        secondTerm +
+
+        thirdTerm;
+}
+
+/**
+ * ---------------------------------------------------
+ * UPDATE STATE
+ * ---------------------------------------------------
+ */
+
+function updateState(
+    DataTypes.ReserveData
+        storage reserve
+) internal {
+
+    if (
+        reserve
+            .lastUpdateTimestamp ==
+        uint40(block.timestamp)
+    ) {
+        return;
     }
+
+    /**
+     * liquidity index
+     */
+
+    uint256 cumulatedLiquidityInterest =
+        calculateLinearInterest(
+            reserve.supplyAPY,
+            reserve
+                .lastUpdateTimestamp
+        );
+
+    reserve.liquidityIndex =
+        (
+            reserve.liquidityIndex *
+            cumulatedLiquidityInterest
+        ) / PRECISION;
+
+    /**
+     * borrow index
+     */
+
+    uint256 cumulatedBorrowInterest =
+        calculateCompoundedInterest(
+            reserve.borrowAPY,
+            reserve
+                .lastUpdateTimestamp
+        );
+
+    reserve.borrowIndex =
+        (
+            reserve.borrowIndex *
+            cumulatedBorrowInterest
+        ) / PRECISION;
+
+    reserve.lastUpdateTimestamp =
+        uint40(
+            block.timestamp
+        );
+}
 }
