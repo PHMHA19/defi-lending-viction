@@ -85,6 +85,53 @@ struct ReserveData {
 
 /**
  * ---------------------------------------------------
+ * RESERVE CACHE
+ * ---------------------------------------------------
+ */
+
+struct ReserveCache {
+
+    /**
+     * reserve indexes
+     */
+
+    uint256 currLiquidityIndex;
+
+    uint256 currBorrowIndex;
+
+    /**
+     * reserve rates
+     */
+
+    uint256 currLiquidityRate;
+
+    uint256 currVariableBorrowRate;
+
+    /**
+     * totals
+     */
+
+    uint256 totalSupplied;
+
+    uint256 totalBorrowed;
+
+    /**
+     * token addresses
+     */
+
+    address aTokenAddress;
+
+    address variableDebtTokenAddress;
+
+    /**
+     * timestamp
+     */
+
+    uint40 reserveLastUpdateTimestamp;
+}
+
+/**
+ * ---------------------------------------------------
  * USER RESERVE DATA
  * ---------------------------------------------------
  */
