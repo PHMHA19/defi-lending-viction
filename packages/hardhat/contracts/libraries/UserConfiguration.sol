@@ -1,88 +1,90 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./DataTypes.sol";
+
 library UserConfiguration {
-
-struct Map {
-
-    uint256 data;
-}
 
 /**
  * ---------------------------------------------------
- * COLLATERAL BIT
+ * BORROWING MASK
  * ---------------------------------------------------
  */
 
-function setUsingAsCollateral(
-    Map storage self,
-    uint256 reserveIndex,
-    bool usingAsCollateral
-) internal {
-
-    uint256 bit =
-        1 << (reserveIndex * 2);
-
-    if (usingAsCollateral) {
-
-        self.data =
-            self.data | bit;
-
-    } else {
-
-        self.data =
-            self.data & (~bit);
-    }
-}
+uint256 internal constant
+    BORROWING_MASK =
+        0x5555555555555555555555555555555555555555555555555555555555555555;
 
 /**
  * ---------------------------------------------------
- * BORROWING BIT
+ * COLLATERAL MASK
+ * ---------------------------------------------------
+ */
+
+uint256 internal constant
+    COLLATERAL_MASK =
+        0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA;
+
+/**
+ * ---------------------------------------------------
+ * SET BORROWING
  * ---------------------------------------------------
  */
 
 function setBorrowing(
-    Map storage self,
+    DataTypes.UserConfigurationMap
+        storage self,
     uint256 reserveIndex,
     bool borrowing
 ) internal {
 
     uint256 bit =
-        1 << (
-            reserveIndex * 2 + 1
+        1 <<
+        (
+            reserveIndex << 1
         );
 
     if (borrowing) {
 
-        self.data =
-            self.data | bit;
+        self.data |= bit;
 
     } else {
 
-        self.data =
-            self.data & (~bit);
+        self.data &= ~bit;
     }
 }
 
 /**
  * ---------------------------------------------------
- * IS USING AS COLLATERAL
+ * SET USING AS COLLATERAL
  * ---------------------------------------------------
  */
 
-function isUsingAsCollateral(
-    Map storage self,
-    uint256 reserveIndex
-)
-    internal
-    view
-    returns (bool)
-{
-    return
+function setUsingAsCollateral(
+    DataTypes.UserConfigurationMap
+        storage self,
+    uint256 reserveIndex,
+    bool usingAsCollateral
+) internal {
+
+    uint256 bit =
+        1 <<
         (
-            self.data >>
-            (reserveIndex * 2)
-        ) & 1 != 0;
+            (
+                reserveIndex << 1
+            ) + 1
+        );
+
+    if (
+        usingAsCollateral
+    ) {
+
+        self.data |= bit;
+
+    } else {
+
+        self.data &= ~bit;
+    }
 }
 
 /**
@@ -92,21 +94,105 @@ function isUsingAsCollateral(
  */
 
 function isBorrowing(
-    Map storage self,
+    DataTypes.UserConfigurationMap
+        memory self,
     uint256 reserveIndex
 )
     internal
-    view
+    pure
     returns (bool)
 {
     return
         (
             self.data >>
             (
-                reserveIndex * 2 + 1
+                reserveIndex << 1
             )
-        ) & 1 != 0;
+        ) &
+        1 != 0;
 }
 
+/**
+ * ---------------------------------------------------
+ * IS USING AS COLLATERAL
+ * ---------------------------------------------------
+ */
+
+function isUsingAsCollateral(
+    DataTypes.UserConfigurationMap
+        memory self,
+    uint256 reserveIndex
+)
+    internal
+    pure
+    returns (bool)
+{
+    return
+        (
+            self.data >>
+            (
+                (
+                    reserveIndex << 1
+                ) + 1
+            )
+        ) &
+        1 != 0;
+}
+
+/**
+ * ---------------------------------------------------
+ * IS EMPTY
+ * ---------------------------------------------------
+ */
+
+function isEmpty(
+    DataTypes.UserConfigurationMap
+        memory self
+)
+    internal
+    pure
+    returns (bool)
+{
+    return
+        self.data == 0;
+}
+
+/**
+ * ---------------------------------------------------
+ * IS BORROWING ANY
+ * ---------------------------------------------------
+ */
+
+function isBorrowingAny(
+    DataTypes.UserConfigurationMap
+        memory self
+)
+    internal
+    pure
+    returns (bool)
+{
+    return
+        self.data &
+        BORROWING_MASK != 0;
+}
+
+/**
+ * ---------------------------------------------------
+ * IS USING AS COLLATERAL ANY
+ * ---------------------------------------------------
+ */
+
+function isUsingAsCollateralAny(
+    DataTypes.UserConfigurationMap
+        memory self
+)
+    internal
+    pure
+    returns (bool)
+{
+    return
+        self.data &
+        COLLATERAL_MASK != 0;
+}
 
 }

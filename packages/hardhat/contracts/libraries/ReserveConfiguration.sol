@@ -72,6 +72,26 @@ uint256 internal constant
     DECIMALS_MASK =
         0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFFFFFFFFFF;
 
+uint256 internal constant
+    ACTIVE_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFFFFFFFF;
+
+uint256 internal constant
+    FROZEN_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFDFFFFFFFFFFFFFFFFFFFFFF;
+
+uint256 internal constant
+    BORROWING_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFBFFFFFFFFFFFFFFFFFFFFFF;
+
+uint256 internal constant
+    PAUSED_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFFFFFFFFFFFFFFFFFFF;
+
+uint256 internal constant
+    RESERVE_FACTOR_MASK =
+        0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF0000FFFFFFFFFFFF;
+
 /**
  * ---------------------------------------------------
  * SET LTV
@@ -101,10 +121,10 @@ function setLtv(
  */
 
 function getLtv(
-    Map storage self
+    Map memory self
 )
     internal
-    view
+    pure
     returns (uint256)
 {
     return
@@ -144,10 +164,10 @@ function setLiquidationThreshold(
  */
 
 function getLiquidationThreshold(
-    Map storage self
+    Map memory self
 )
     internal
-    view
+    pure
     returns (uint256)
 {
     return
@@ -187,10 +207,10 @@ function setLiquidationBonus(
  */
 
 function getLiquidationBonus(
-    Map storage self
+    Map memory self
 )
     internal
-    view
+    pure
     returns (uint256)
 {
     return
@@ -212,18 +232,15 @@ function setActive(
     bool active
 ) internal {
 
-    if (active) {
-
-        self.data =
-            self.data |
-            (1 << ACTIVE_START_BIT_POSITION);
-
-    } else {
-
-        self.data =
+    self.data =
+        (
             self.data &
-            ~(1 << ACTIVE_START_BIT_POSITION);
-    }
+            ACTIVE_MASK
+        ) |
+        (
+            uint256(active ? 1 : 0)
+            << ACTIVE_START_BIT_POSITION
+        );
 }
 
 /**
@@ -233,10 +250,10 @@ function setActive(
  */
 
 function getActive(
-    Map storage self
+    Map memory self
 )
     internal
-    view
+    pure
     returns (bool)
 {
     return
@@ -257,18 +274,15 @@ function setBorrowingEnabled(
     bool enabled
 ) internal {
 
-    if (enabled) {
-
-        self.data =
-            self.data |
-            (1 << BORROWING_START_BIT_POSITION);
-
-    } else {
-
-        self.data =
+    self.data =
+        (
             self.data &
-            ~(1 << BORROWING_START_BIT_POSITION);
-    }
+            BORROWING_MASK
+        ) |
+        (
+            uint256(enabled ? 1 : 0)
+            << BORROWING_START_BIT_POSITION
+        );
 }
 
 /**
@@ -278,10 +292,10 @@ function setBorrowingEnabled(
  */
 
 function getBorrowingEnabled(
-    Map storage self
+    Map memory self
 )
     internal
-    view
+    pure
     returns (bool)
 {
     return
@@ -302,18 +316,15 @@ function setPaused(
     bool paused
 ) internal {
 
-    if (paused) {
-
-        self.data =
-            self.data |
-            (1 << PAUSED_START_BIT_POSITION);
-
-    } else {
-
-        self.data =
+    self.data =
+        (
             self.data &
-            ~(1 << PAUSED_START_BIT_POSITION);
-    }
+            PAUSED_MASK
+        ) |
+        (
+            uint256(paused ? 1 : 0)
+            << PAUSED_START_BIT_POSITION
+        );
 }
 
 /**
@@ -323,10 +334,10 @@ function setPaused(
  */
 
 function getPaused(
-    Map storage self
+    Map memory self
 )
     internal
-    view
+    pure
     returns (bool)
 {
     return
@@ -334,6 +345,48 @@ function getPaused(
             self.data >>
             PAUSED_START_BIT_POSITION
         ) & 1 != 0;
+}
+
+/**
+ * ---------------------------------------------------
+ * SET RESERVE FACTOR
+ * ---------------------------------------------------
+ */
+
+function setReserveFactor(
+    Map storage self,
+    uint256 reserveFactor
+) internal {
+
+    self.data =
+        (
+            self.data &
+            RESERVE_FACTOR_MASK
+        ) |
+        (
+            reserveFactor <<
+            RESERVE_FACTOR_START_BIT_POSITION
+        );
+}
+
+/**
+ * ---------------------------------------------------
+ * GET RESERVE FACTOR
+ * ---------------------------------------------------
+ */
+
+function getReserveFactor(
+    Map memory self
+)
+    internal
+    pure
+    returns (uint256)
+{
+    return
+        (
+            self.data >>
+            RESERVE_FACTOR_START_BIT_POSITION
+        ) & 0xFFFF;
 }
 
 }

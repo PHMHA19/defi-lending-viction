@@ -11,7 +11,7 @@ using ReserveConfiguration
     for ReserveConfiguration.Map;
 
 using UserConfiguration
-    for UserConfiguration.Map;
+    for DataTypes.UserConfigurationMap;
 
 uint256 internal constant
     PRECISION = 1e18;
@@ -62,7 +62,7 @@ function calculateUserAccountData(
 
     mapping(
         address =>
-            UserConfiguration.Map
+            DataTypes.UserConfigurationMap
     ) storage userConfig,
 
     address user,

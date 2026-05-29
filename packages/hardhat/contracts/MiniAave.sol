@@ -4,9 +4,9 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./AToken.sol";
+import "./tokenization/AToken.sol";
 
-import "./debt/VariableDebtToken.sol";
+import "./tokenization/VariableDebtToken.sol";
 
 import "./libraries/InterestLogic.sol";
 import "./libraries/ValidationLogic.sol";
@@ -32,7 +32,7 @@ using ReserveConfiguration
     for ReserveConfiguration.Map;
 
 using UserConfiguration
-    for UserConfiguration.Map;
+    for DataTypes.UserConfigurationMap;
 
 uint256 public constant PRECISION =
     1e18;
@@ -82,7 +82,7 @@ mapping(
 
 mapping(
     address =>
-        UserConfiguration.Map
+        DataTypes.UserConfigurationMap
 )
     internal userConfig;
 

@@ -7,8 +7,15 @@ import "./GenericLogic.sol";
 
 library ValidationLogic {
 
+
 using ReserveConfiguration
     for ReserveConfiguration.Map;
+
+/**
+ * ---------------------------------------------------
+ * HEALTH FACTOR THRESHOLD
+ * ---------------------------------------------------
+ */
 
 uint256 internal constant
     HEALTH_FACTOR_LIQUIDATION_THRESHOLD =
@@ -23,7 +30,6 @@ uint256 internal constant
 function validateSupply(
     DataTypes.ReserveData
         storage reserve,
-
     uint256 amount
 ) internal view {
 
@@ -78,11 +84,9 @@ function validateWithdraw(
 function validateBorrow(
     DataTypes.ReserveData
         storage reserve,
-
     GenericLogic
         .UserAccountData
             memory accountData,
-
     uint256 amount
 ) internal view {
 
@@ -109,20 +113,28 @@ function validateBorrow(
         reserve
             .configuration
             .getBorrowingEnabled(),
-        "BORROW_DISABLED"
+        "BORROWING_DISABLED"
     );
 
     require(
-        reserve
-            .totalSupplied >= amount,
+        reserve.totalSupplied >=
+            reserve.totalBorrowed +
+            amount,
         "NOT_ENOUGH_LIQUIDITY"
     );
 
     require(
         accountData
             .availableBorrowsBase >=
-        amount,
-        "NOT_ENOUGH_COLLATERAL"
+            amount,
+        "COLLATERAL_CANNOT_COVER_NEW_BORROW"
+    );
+
+    require(
+        accountData
+            .healthFactor >=
+            HEALTH_FACTOR_LIQUIDATION_THRESHOLD,
+        "HEALTH_FACTOR_TOO_LOW"
     );
 }
 
@@ -143,7 +155,12 @@ function validateRepay(
     );
 
     require(
-        userDebt >= amount,
+        userDebt > 0,
+        "NO_DEBT"
+    );
+
+    require(
+        amount <= userDebt,
         "INVALID_REPAY_AMOUNT"
     );
 }
@@ -161,7 +178,7 @@ function validateHealthFactor(
     require(
         healthFactor >=
         HEALTH_FACTOR_LIQUIDATION_THRESHOLD,
-        "HEALTH_FACTOR_TOO_LOW"
+        "HEALTH_FACTOR_LOWER_THAN_LIQUIDATION_THRESHOLD"
     );
 }
 
@@ -178,7 +195,33 @@ function validateLiquidationCall(
     require(
         healthFactor <
         HEALTH_FACTOR_LIQUIDATION_THRESHOLD,
-        "HEALTH_FACTOR_OK"
+        "HEALTH_FACTOR_NOT_BELOW_THRESHOLD"
+    );
+}
+
+/**
+ * ---------------------------------------------------
+ * VALIDATE USE AS COLLATERAL
+ * ---------------------------------------------------
+ */
+
+function validateUseAsCollateral(
+    DataTypes.ReserveData
+        storage reserve
+) internal view {
+
+    require(
+        reserve
+            .configuration
+            .getActive(),
+        "RESERVE_INACTIVE"
+    );
+
+    require(
+        !reserve
+            .configuration
+            .getPaused(),
+        "RESERVE_PAUSED"
     );
 }
 
