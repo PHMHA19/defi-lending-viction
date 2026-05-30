@@ -23,7 +23,7 @@
     "verify": "tsx scripts/runVerify.ts"
   },
   "devDependencies": {
-    "@nomicfoundation/hardhat-ethers": "^4",
+    "@nomicfoundation/hardhat-ethers": "^4.0.12",
     "@nomicfoundation/hardhat-ethers-chai-matchers": "^3",
     "@nomicfoundation/hardhat-ignition": "^3",
     "@nomicfoundation/hardhat-ignition-ethers": "^3",
@@ -49,7 +49,7 @@
     "eslint": "^9.23.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.4",
-    "ethers": "^6.13.2",
+    "ethers": "^6.16.0",
     "hardhat": "^3.4.5",
     "hardhat-deploy": "^2.0.6",
     "mocha": "^11",
