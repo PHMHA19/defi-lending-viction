@@ -225,12 +225,6 @@ interface IPoolConfigurator {
    */
   event SiloedBorrowingChanged(address indexed asset, bool oldState, bool newState);
 
-  /**
-   * @dev Emitted when the bridge protocol fee is updated.
-   * @param oldBridgeProtocolFee The old protocol fee, expressed in bps
-   * @param newBridgeProtocolFee The new protocol fee, expressed in bps
-   */
-  event BridgeProtocolFeeUpdated(uint256 oldBridgeProtocolFee, uint256 newBridgeProtocolFee);
 
   /**
    * @dev Emitted when the total premium on flashloans is updated.
@@ -447,12 +441,7 @@ interface IPoolConfigurator {
    */
   function dropReserve(address asset) external;
 
-  /**
-   * @notice Updates the bridge fee collected by the protocol reserves.
-   * @param newBridgeProtocolFee The part of the fee sent to the protocol treasury, expressed in bps
-   */
-  function updateBridgeProtocolFee(uint256 newBridgeProtocolFee) external;
-
+  
   /**
    * @notice Updates the total flash loan premium.
    * Total flash loan premium consists of two parts:

@@ -429,17 +429,6 @@ contract PoolConfigurator is VersionedInitializable, IPoolConfigurator {
   }
 
   /// @inheritdoc IPoolConfigurator
-  function updateBridgeProtocolFee(uint256 newBridgeProtocolFee) external override onlyPoolAdmin {
-    require(
-      newBridgeProtocolFee <= PercentageMath.PERCENTAGE_FACTOR,
-      Errors.BRIDGE_PROTOCOL_FEE_INVALID
-    );
-    uint256 oldBridgeProtocolFee = _pool.BRIDGE_PROTOCOL_FEE();
-    _pool.updateBridgeProtocolFee(newBridgeProtocolFee);
-    emit BridgeProtocolFeeUpdated(oldBridgeProtocolFee, newBridgeProtocolFee);
-  }
-
-  /// @inheritdoc IPoolConfigurator
   function updateFlashloanPremiumTotal(
     uint128 newFlashloanPremiumTotal
   ) external override onlyPoolAdmin {

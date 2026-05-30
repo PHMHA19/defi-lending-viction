@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-
+/*
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -59,9 +59,7 @@ contract LendingPool {
         reserve.isActive = true;
     }
 
-    /**
-     * @notice Supply collateral asset to protocol
-     */
+  
     function supply(uint256 amount) external {
 
         require(
@@ -103,9 +101,7 @@ contract LendingPool {
         );
     }
 
-    /**
-     * @notice Withdraw collateral asset
-     */
+   
     function withdraw(uint256 amount) external {
 
         UserPosition storage user =
@@ -147,9 +143,7 @@ contract LendingPool {
         );
     }
 
-    /**
-     * @notice Borrow asset from protocol
-     */
+  
     function borrow(uint256 amount) external {
 
         require(
@@ -198,9 +192,7 @@ contract LendingPool {
         );
     }
 
-    /**
-     * @notice Repay borrowed asset
-     */
+   
     function repay(uint256 amount) external {
 
         UserPosition storage user =
@@ -245,9 +237,7 @@ contract LendingPool {
         );
     }
 
-    /**
-     * @notice Calculate health factor
-     */
+ 
     function getHealthFactor(
         address userAddress
     ) public view returns (uint256) {
@@ -268,9 +258,7 @@ contract LendingPool {
         );
     }
 
-    /**
-     * @notice Check liquidation condition
-     */
+ 
     function isLiquidatable(
         address userAddress
     ) public view returns (bool) {
@@ -280,9 +268,7 @@ contract LendingPool {
             < 1e18;
     }
 
-    /**
-     * @dev Internal health validation
-     */
+ 
     function _isHealthy(
         uint256 collateral,
         uint256 debt
@@ -304,9 +290,7 @@ contract LendingPool {
         return healthFactor >= 1e18;
     }
 
-    /**
-     * @notice Get user account data
-     */
+   
     function getUserAccountData(
         address userAddress
     )
@@ -331,3 +315,4 @@ contract LendingPool {
             getHealthFactor(userAddress);
     }
 }
+*/

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
-
+/*
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./tokenization/AToken.sol";
+import "./protocol/tokenization/AToken.sol";
 
 import "./tokenization/VariableDebtToken.sol";
 
@@ -37,20 +37,10 @@ using UserConfiguration
 uint256 public constant PRECISION =
     1e18;
 
-/**
- * ---------------------------------------------------
- * ADDRESSES PROVIDER
- * ---------------------------------------------------
- */
 
 PoolAddressesProvider
     public addressesProvider;
 
-/**
- * ---------------------------------------------------
- * RESERVES
- * ---------------------------------------------------
- */
 
 mapping(
     address =>
@@ -58,11 +48,6 @@ mapping(
 )
     public reserves;
 
-/**
- * ---------------------------------------------------
- * USER POSITIONS
- * ---------------------------------------------------
- */
 
 mapping(
     address =>
@@ -74,11 +59,7 @@ mapping(
 )
     private userPositions;
 
-/**
- * ---------------------------------------------------
- * USER CONFIG
- * ---------------------------------------------------
- */
+
 
 mapping(
     address =>
@@ -86,37 +67,20 @@ mapping(
 )
     internal userConfig;
 
-/**
- * ---------------------------------------------------
- * RESERVE LIST
- * ---------------------------------------------------
- */
+
 
 address[] public reserveList;
 
-/**
- * ---------------------------------------------------
- * A TOKENS
- * ---------------------------------------------------
- */
+
 
 mapping(address => address)
     public aTokens;
 
-/**
- * ---------------------------------------------------
- * DEBT TOKENS
- * ---------------------------------------------------
- */
+
 
 mapping(address => address)
     public debtTokens;
 
-/**
- * ---------------------------------------------------
- * EVENTS
- * ---------------------------------------------------
- */
 
 event Supply(
     address indexed user,
@@ -150,11 +114,6 @@ event ReserveDataUpdated(
     uint256 borrowIndex
 );
 
-/**
- * ---------------------------------------------------
- * ONLY CONFIGURATOR
- * ---------------------------------------------------
- */
 
 modifier onlyConfigurator() {
 
@@ -168,11 +127,6 @@ modifier onlyConfigurator() {
     _;
 }
 
-/**
- * ---------------------------------------------------
- * CONSTRUCTOR
- * ---------------------------------------------------
- */
 
 constructor(
     address provider
@@ -184,11 +138,6 @@ constructor(
         );
 }
 
-/**
- * ---------------------------------------------------
- * INTERNAL ORACLE
- * ---------------------------------------------------
- */
 
 function _getOracle()
     internal
@@ -202,11 +151,7 @@ function _getOracle()
         );
 }
 
-/**
- * ---------------------------------------------------
- * INTERNAL PRICE
- * ---------------------------------------------------
- */
+
 
 function _getAssetPrice(
     address asset
@@ -222,11 +167,6 @@ function _getAssetPrice(
             );
 }
 
-/**
- * ---------------------------------------------------
- * INTERNAL ACCOUNT DATA
- * ---------------------------------------------------
- */
 
 function _getUserAccountData(
     address user
@@ -257,11 +197,6 @@ function _getUserAccountData(
             );
 }
 
-/**
- * ---------------------------------------------------
- * ADD RESERVE
- * ---------------------------------------------------
- */
 
 function addReserve(
     address asset,
@@ -349,11 +284,7 @@ function addReserve(
 
     reserveList.push(asset);
 
-    /**
-     * ---------------------------------------------------
-     * CREATE A TOKEN
-     * ---------------------------------------------------
-     */
+    
 
     AToken aToken =
         new AToken(
@@ -365,11 +296,7 @@ function addReserve(
     aTokens[asset] =
         address(aToken);
 
-    /**
-     * ---------------------------------------------------
-     * CREATE DEBT TOKEN
-     * ---------------------------------------------------
-     */
+   
 
     VariableDebtToken
         debtToken =
@@ -383,11 +310,7 @@ function addReserve(
         address(debtToken);
 }
 
-/**
- * ---------------------------------------------------
- * UPDATE RESERVE INTEREST RATES
- * ---------------------------------------------------
- */
+
 
 function updateReserveInterestRates(
     address asset
@@ -447,12 +370,6 @@ function updateReserveInterestRates(
             .borrowIndex
     );
 }
-
-/**
- * ---------------------------------------------------
- * SUPPLY
- * ---------------------------------------------------
- */
 
 function supply(
     address asset,
@@ -519,11 +436,7 @@ function supply(
     );
 }
 
-/**
- * ---------------------------------------------------
- * WITHDRAW
- * ---------------------------------------------------
- */
+
 
 function withdraw(
     address asset,
@@ -592,12 +505,7 @@ function withdraw(
             amount
         );
 
-    /**
-     * ---------------------------------------------------
-     * HEALTH FACTOR CHECK
-     * ---------------------------------------------------
-     */
-
+   
     uint256 healthFactor =
         _getUserAccountData(
             msg.sender
@@ -619,11 +527,6 @@ function withdraw(
     );
 }
 
-/**
- * ---------------------------------------------------
- * BORROW
- * ---------------------------------------------------
- */
 
 function borrow(
     address asset,
@@ -697,11 +600,6 @@ function borrow(
     );
 }
 
-/**
- * ---------------------------------------------------
- * REPAY
- * ---------------------------------------------------
- */
 
 function repay(
     address asset,
@@ -782,11 +680,6 @@ function repay(
     );
 }
 
-/**
- * ---------------------------------------------------
- * USER SUPPLY
- * ---------------------------------------------------
- */
 
 function getUserSupply(
     address user,
@@ -815,11 +708,6 @@ function getUserSupply(
         ) / PRECISION;
 }
 
-/**
- * ---------------------------------------------------
- * USER BORROW
- * ---------------------------------------------------
- */
 
 function getUserBorrow(
     address user,
@@ -848,11 +736,6 @@ function getUserBorrow(
         ) / PRECISION;
 }
 
-/**
- * ---------------------------------------------------
- * HEALTH FACTOR
- * ---------------------------------------------------
- */
 
 function getHealthFactor(
     address user
@@ -867,11 +750,6 @@ function getHealthFactor(
         ).healthFactor;
 }
 
-/**
- * ---------------------------------------------------
- * ACCOUNT DATA
- * ---------------------------------------------------
- */
 
 function getUserAccountData(
     address user
@@ -910,3 +788,4 @@ function getUserAccountData(
 }
 
 }
+*/

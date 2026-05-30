@@ -34,9 +34,6 @@ contract PoolStorage {
   // Map of users address and their eMode category (userAddress => eModeCategoryId)
   mapping(address => uint8) internal _usersEModeCategory;
 
-  // Fee of the protocol bridge, expressed in bps
-  uint256 internal _bridgeProtocolFee;
-
   // Total FlashLoan Premium, expressed in bps
   uint128 internal _flashLoanPremiumTotal;
 

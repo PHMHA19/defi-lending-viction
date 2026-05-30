@@ -12,7 +12,6 @@ import {FlashLoanLogic} from '../libraries/logic/FlashLoanLogic.sol';
 import {BorrowLogic} from '../libraries/logic/BorrowLogic.sol';
 import {LiquidationLogic} from '../libraries/logic/LiquidationLogic.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
-import {BridgeLogic} from '../libraries/logic/BridgeLogic.sol';
 import {IERC20WithPermit} from '../../interfaces/IERC20WithPermit.sol';
 import {IPoolAddressesProvider} from '../../interfaces/IPoolAddressesProvider.sol';
 import {IPool} from '../../interfaces/IPool.sol';
@@ -58,13 +57,6 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
     _;
   }
 
-  /**
-   * @dev Only bridge can call functions marked by this modifier.
-   */
-  modifier onlyBridge() {
-    _onlyBridge();
-    _;
-  }
 
   function _onlyPoolConfigurator() internal view virtual {
     require(
@@ -80,12 +72,6 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
     );
   }
 
-  function _onlyBridge() internal view virtual {
-    require(
-      IACLManager(ADDRESSES_PROVIDER.getACLManager()).isBridge(msg.sender),
-      Errors.CALLER_NOT_BRIDGE
-    );
-  }
 
   function getRevision() internal pure virtual override returns (uint256) {
     return POOL_REVISION;
@@ -111,33 +97,6 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
     _maxStableRateBorrowSizePercent = 0.25e4;
   }
 
-  /// @inheritdoc IPool
-  function mintUnbacked(
-    address asset,
-    uint256 amount,
-    address onBehalfOf,
-    uint16 referralCode
-  ) external virtual override onlyBridge {
-    BridgeLogic.executeMintUnbacked(
-      _reserves,
-      _reservesList,
-      _usersConfig[onBehalfOf],
-      asset,
-      amount,
-      onBehalfOf,
-      referralCode
-    );
-  }
-
-  /// @inheritdoc IPool
-  function backUnbacked(
-    address asset,
-    uint256 amount,
-    uint256 fee
-  ) external virtual override onlyBridge returns (uint256) {
-    return
-      BridgeLogic.executeBackUnbacked(_reserves[asset], asset, amount, fee, _bridgeProtocolFee);
-  }
 
   /// @inheritdoc IPool
   function supply(
@@ -543,10 +502,6 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
     return _maxStableRateBorrowSizePercent;
   }
 
-  /// @inheritdoc IPool
-  function BRIDGE_PROTOCOL_FEE() public view virtual override returns (uint256) {
-    return _bridgeProtocolFee;
-  }
 
   /// @inheritdoc IPool
   function FLASHLOAN_PREMIUM_TOTAL() public view virtual override returns (uint128) {
@@ -644,12 +599,6 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
     _reserves[asset].configuration = configuration;
   }
 
-  /// @inheritdoc IPool
-  function updateBridgeProtocolFee(
-    uint256 protocolFee
-  ) external virtual override onlyPoolConfigurator {
-    _bridgeProtocolFee = protocolFee;
-  }
 
   /// @inheritdoc IPool
   function updateFlashloanPremiums(

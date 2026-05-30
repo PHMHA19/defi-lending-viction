@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import {IPriceOracle} from '../../interfaces/IPriceOracle.sol';
+import {IPriceOracle} from '../interfaces/IPriceOracle.sol';
 
 contract PriceOracle is IPriceOracle {
   // Map of asset prices (asset => price)
