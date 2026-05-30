@@ -54,16 +54,30 @@ await ethers.getContractFactory(
 "PoolAddressesProvider"
 );
 
+const [deployer] =
+  await ethers.getSigners();
+
 const provider =
-await Provider.deploy(
-"MiniAaveMarket"
+  await Provider.deploy(
+    "MiniAaveMarket",
+    deployer.address
+  );
+await provider.waitForDeployment();
+
+
+await provider.setACLAdmin(
+deployer.address
 );
 
-await provider.waitForDeployment();
+console.log(
+"ACL Admin Set:",
+deployer.address
+);
+
 
 console.log(
 "Provider:",
-await provider.getAddress()
+provider.target as string
 );
 
 // =====================================================
@@ -77,14 +91,14 @@ await ethers.getContractFactory(
 
 const acl =
 await ACL.deploy(
-await provider.getAddress()
+provider.target as string
 );
 
 await acl.waitForDeployment();
 
 console.log(
 "ACL:",
-await acl.getAddress()
+acl.target as string
 );
 
 // =====================================================
@@ -97,14 +111,102 @@ await ethers.getContractFactory(
 );
 
 const oracle =
-await Oracle.deploy();
+await Oracle.deploy(
+provider.target as string,
+[],
+[],
+ethers.ZeroAddress,
+ethers.ZeroAddress,
+1
+);
 
 await oracle.waitForDeployment();
 
 console.log(
 "Oracle:",
-await oracle.getAddress()
+oracle.target
 );
+
+// =====================================================
+// LIBRARIES
+// =====================================================
+
+const BorrowLogicLib =
+await ethers.getContractFactory(
+"BorrowLogic"
+);
+
+const borrowLogic =
+await BorrowLogicLib.deploy();
+
+await borrowLogic.waitForDeployment();
+
+// -----------------------------
+
+const EModeLogicLib =
+await ethers.getContractFactory(
+"EModeLogic"
+);
+
+const eModeLogic =
+await EModeLogicLib.deploy();
+
+await eModeLogic.waitForDeployment();
+
+// -----------------------------
+
+const FlashLoanLogicLib =
+await ethers.getContractFactory(
+"FlashLoanLogic",
+{
+libraries: {
+BorrowLogic:
+borrowLogic.target as string,
+}
+}
+);
+
+const flashLoanLogic =
+await FlashLoanLogicLib.deploy();
+
+await flashLoanLogic.waitForDeployment();
+
+
+// -----------------------------
+
+const LiquidationLogicLib =
+await ethers.getContractFactory(
+"LiquidationLogic"
+);
+
+const liquidationLogic =
+await LiquidationLogicLib.deploy();
+
+await liquidationLogic.waitForDeployment();
+
+// -----------------------------
+
+const PoolLogicLib =
+await ethers.getContractFactory(
+"PoolLogic"
+);
+
+const poolLogic =
+await PoolLogicLib.deploy();
+
+await poolLogic.waitForDeployment();
+
+// -----------------------------
+
+const SupplyLogicLib =
+await ethers.getContractFactory(
+"SupplyLogic"
+);
+
+const supplyLogic =
+await SupplyLogicLib.deploy();
+
+await supplyLogic.waitForDeployment();
 
 // =====================================================
 // POOL
@@ -112,29 +214,71 @@ await oracle.getAddress()
 
 const Pool =
 await ethers.getContractFactory(
-"Pool"
+"Pool",
+{
+libraries: {
+BorrowLogic:
+borrowLogic.target as string,
+
+
+    EModeLogic:
+      eModeLogic.target as string,
+
+    FlashLoanLogic:
+      flashLoanLogic.target as string,
+
+    LiquidationLogic:
+      liquidationLogic.target as string,
+
+    PoolLogic:
+      poolLogic.target as string,
+
+    SupplyLogic:
+      supplyLogic.target as string,
+  }
+}
+
+
 );
+
 
 const pool =
 await Pool.deploy(
-await provider.getAddress()
+provider.target as string
 );
 
 await pool.waitForDeployment();
 
 console.log(
 "Pool:",
-await pool.getAddress()
+pool.target as string
 );
 
 // =====================================================
 // CONFIGURATOR
 // =====================================================
+const ConfiguratorLogicLib =
+await ethers.getContractFactory(
+"ConfiguratorLogic"
+);
+
+const configuratorLogic =
+await ConfiguratorLogicLib.deploy();
+
+await configuratorLogic.waitForDeployment();
+
 
 const PoolConfigurator =
 await ethers.getContractFactory(
-"PoolConfigurator"
+"PoolConfigurator",
+{
+libraries: {
+ConfiguratorLogic:
+configuratorLogic.target as string,
+}
+}
 );
+
 
 const configurator =
 await PoolConfigurator.deploy();
@@ -143,7 +287,7 @@ await configurator.waitForDeployment();
 
 console.log(
 "Configurator:",
-await configurator.getAddress()
+configurator.target as string
 );
 
 // =====================================================
@@ -153,11 +297,11 @@ await configurator.getAddress()
 console.log("Registering...");
 
 await provider.setPool(
-await pool.getAddress()
+pool.target as string
 );
 
 await provider.setPoolConfigurator(
-await configurator.getAddress()
+configurator.target as string
 );
 
 console.log("=================================");

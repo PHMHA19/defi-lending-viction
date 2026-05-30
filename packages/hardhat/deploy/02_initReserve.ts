@@ -14,10 +14,13 @@ console.log("=================================");
 // =====================================================
 
 const poolConfiguratorAddress =
-"PASTE_CONFIGURATOR_ADDRESS";
+"0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575";
 
 const usdcAddress =
-"PASTE_USDC_ADDRESS";
+"0x95401dc811bb5740090279Ba06cfA8fcF6113778";
+
+const providerAddress =
+"0x70e0bA845a1A0F2DA3359C97E0285013525FFC49";
 
 // =====================================================
 // CONTRACTS
@@ -29,57 +32,77 @@ await ethers.getContractAt(
 poolConfiguratorAddress
 );
 
+const provider =
+await ethers.getContractAt(
+"PoolAddressesProvider",
+providerAddress
+);
+
+const poolAddress =
+await provider.getPool();
+
+console.log(
+"Pool:",
+poolAddress
+);
+
 // =====================================================
 // TOKENIZATION
 // =====================================================
 
 const AToken =
 await ethers.getContractFactory(
-"AToken"
+"MockAToken"
 );
 
 const aToken =
-await AToken.deploy();
+await AToken.deploy(
+poolAddress
+);
 
 await aToken.waitForDeployment();
 
 console.log(
 "AToken:",
-await aToken.getAddress()
+aToken.target
 );
 
 // -----------------------------
 
 const StableDebt =
 await ethers.getContractFactory(
-"StableDebtToken"
+"MockStableDebtToken"
 );
 
 const stableDebt =
-await StableDebt.deploy();
+await StableDebt.deploy(
+poolAddress
+);
 
 await stableDebt.waitForDeployment();
 
 console.log(
 "StableDebt:",
-await stableDebt.getAddress()
+stableDebt.target
 );
 
 // -----------------------------
 
 const VariableDebt =
 await ethers.getContractFactory(
-"VariableDebtToken"
+"MockVariableDebtToken"
 );
 
 const variableDebt =
-await VariableDebt.deploy();
+await VariableDebt.deploy(
+poolAddress
+);
 
 await variableDebt.waitForDeployment();
 
 console.log(
 "VariableDebt:",
-await variableDebt.getAddress()
+variableDebt.target
 );
 
 // =====================================================
@@ -91,14 +114,38 @@ await ethers.getContractFactory(
 "DefaultReserveInterestRateStrategy"
 );
 
+const RAY =
+BigInt("1000000000000000000000000000");
+
 const strategy =
-await Strategy.deploy();
+await Strategy.deploy(
+providerAddress,
+
+  RAY * 80n / 100n, // optimalUsageRatio
+
+  0n, // baseVariableBorrowRate
+
+  RAY * 4n / 100n, // variableRateSlope1
+
+  RAY * 75n / 100n, // variableRateSlope2
+
+  RAY * 2n / 100n, // stableRateSlope1
+
+  RAY * 75n / 100n, // stableRateSlope2
+
+  0n, // baseStableRateOffset
+
+  0n, // stableRateExcessOffset
+
+  RAY * 20n / 100n // optimalStableToTotalDebtRatio
+);
+
 
 await strategy.waitForDeployment();
 
 console.log(
 "Strategy:",
-await strategy.getAddress()
+strategy.target
 );
 
 // =====================================================
@@ -110,19 +157,20 @@ console.log("Initializing reserve...");
 await configurator.initReserves([
 {
 aTokenImpl:
-await aToken.getAddress(),
+aToken.target as string,
 
-```
+
   stableDebtTokenImpl:
-    await stableDebt.getAddress(),
+    stableDebt.target as string,
 
   variableDebtTokenImpl:
-    await variableDebt.getAddress(),
+    variableDebt.target as string,
 
-  underlyingAssetDecimals: 6,
+  underlyingAssetDecimals:
+    6,
 
   interestRateStrategyAddress:
-    await strategy.getAddress(),
+    strategy.target as string,
 
   underlyingAsset:
     usdcAddress,
@@ -151,9 +199,10 @@ await aToken.getAddress(),
   stableDebtTokenSymbol:
     "sdUSDC",
 
-  params: "0x"
+  params:
+    "0x"
 }
-```
+
 
 ]);
 
