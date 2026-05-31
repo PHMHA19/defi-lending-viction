@@ -3,789 +3,579 @@ pragma solidity ^0.8.20;
 /*
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "./protocol/tokenization/AToken.sol";
-
-import "./tokenization/VariableDebtToken.sol";
-
-import "./libraries/InterestLogic.sol";
-import "./libraries/ValidationLogic.sol";
-import "./libraries/DataTypes.sol";
-import "./libraries/ReserveConfiguration.sol";
-import "./libraries/UserConfiguration.sol";
-import "./libraries/GenericLogic.sol";
+import "./protocol/libraries/types/DataTypes.sol";
+import "./protocol/libraries/configuration/ReserveConfiguration.sol";
+import "./protocol/libraries/configuration/UserConfiguration.sol";
 
 import "./oracle/AaveOracle.sol";
 
-import "./core/PoolAddressesProvider.sol";
+struct UserReserveData {
+uint256 scaledATokenBalance;
+uint256 scaledVariableDebt;
+}
 
-import "./interest/DefaultReserveInterestRateStrategy.sol";
+contract MiniAave is ReentrancyGuard, Ownable {
 
-contract MiniAave {
-
-using SafeERC20 for IERC20;
-
-using InterestLogic
-    for DataTypes.ReserveData;
-
-using ReserveConfiguration
-    for ReserveConfiguration.Map;
-
-using UserConfiguration
-    for DataTypes.UserConfigurationMap;
-
-uint256 public constant PRECISION =
-    1e18;
+    using SafeERC20 for IERC20;
 
 
-PoolAddressesProvider
-    public addressesProvider;
+    uint256 public constant PRECISION = 1e18;
 
+    AaveOracle public oracle;
 
-mapping(
-    address =>
+    mapping(address => DataTypes.ReserveData)
+        public reserves;
+
+    mapping(address => mapping(address => UserReserveData))
+        internal userPositions;
+
+    mapping(address => DataTypes.UserConfigurationMap)
+        internal userConfigs;
+
+    mapping(address => address)
+        public aTokens;
+
+    mapping(address => address)
+        public debtTokens;
+
+    address[] public reserveList;
+
+    // =====================================================
+    // EVENTS
+    // =====================================================
+
+    event ReserveAdded(
+        address indexed asset,
+        address aToken,
+        address debtToken
+    );
+
+    event Supply(
+        address indexed user,
+        address indexed asset,
+        uint256 amount
+    );
+
+    event Withdraw(
+        address indexed user,
+        address indexed asset,
+        uint256 amount
+    );
+
+    event Borrow(
+        address indexed user,
+        address indexed asset,
+        uint256 amount
+    );
+
+    event Repay(
+        address indexed user,
+        address indexed asset,
+        uint256 amount
+    );
+
+    event Liquidation(
+        address indexed liquidator,
+        address indexed user,
+        address collateralAsset,
+        address debtAsset,
+        uint256 repaidAmount,
+        uint256 collateralTaken
+    );
+
+    // =====================================================
+    // CONSTRUCTOR
+    // =====================================================
+
+    constructor(address oracleAddress)
+        Ownable(msg.sender)
+    {
+        oracle = AaveOracle(oracleAddress);
+    }
+
+    // =====================================================
+    // ADMIN
+    // =====================================================
+
+    function addReserve(
+        address asset,
+        uint256 liquidityRate,
+        uint256 borrowRate,
+        uint256 ltv,
+        uint256 liquidationThreshold,
+        address strategyAddress
+    ) external onlyOwner {
+
+        require(
+            !reserves[asset].configuration.getActive(),
+            "RESERVE_EXISTS"
+        );
+
         DataTypes.ReserveData
-)
-    public reserves;
+            storage reserve = reserves[asset];
 
-
-mapping(
-    address =>
-        mapping(
-            address =>
-                DataTypes
-                    .UserReserveData
-        )
-)
-    private userPositions;
-
-
-
-mapping(
-    address =>
-        DataTypes.UserConfigurationMap
-)
-    internal userConfig;
-
-
-
-address[] public reserveList;
-
-
-
-mapping(address => address)
-    public aTokens;
-
-
-
-mapping(address => address)
-    public debtTokens;
-
-
-event Supply(
-    address indexed user,
-    address indexed asset,
-    uint256 amount
-);
-
-event Withdraw(
-    address indexed user,
-    address indexed asset,
-    uint256 amount
-);
-
-event Borrow(
-    address indexed user,
-    address indexed asset,
-    uint256 amount
-);
-
-event Repay(
-    address indexed user,
-    address indexed asset,
-    uint256 amount
-);
-
-event ReserveDataUpdated(
-    address indexed asset,
-    uint256 liquidityRate,
-    uint256 variableBorrowRate,
-    uint256 liquidityIndex,
-    uint256 borrowIndex
-);
-
-
-modifier onlyConfigurator() {
-
-    require(
-        msg.sender ==
-        addressesProvider
-            .getPoolConfigurator(),
-        "ONLY_CONFIGURATOR"
-    );
-
-    _;
-}
-
-
-constructor(
-    address provider
-) {
-
-    addressesProvider =
-        PoolAddressesProvider(
-            provider
+        reserve.id = uint16(
+            reserveList.length
         );
-}
 
+        reserve.liquidityIndex = PRECISION;
 
-function _getOracle()
-    internal
-    view
-    returns (AaveOracle)
-{
-    return
-        AaveOracle(
-            addressesProvider
-                .getPriceOracle()
-        );
-}
+        reserve.currentLiquidityRate =
+            liquidityRate;
 
+        reserve.currentVariableBorrowRate =
+            borrowRate;
 
+        reserve.variableBorrowIndex = PRECISION;
 
-function _getAssetPrice(
-    address asset
-)
-    internal
-    view
-    returns (uint256)
-{
-    return
-        _getOracle()
-            .getAssetPrice(
-                asset
+        reserve.lastUpdateTimestamp =
+            uint40(block.timestamp);
+
+        reserve.interestRateStrategyAddress =
+            strategyAddress;
+
+        reserve.configuration.setActive(true);
+
+        reserve.configuration.setBorrowingEnabled(true);
+
+        reserve.configuration.setLtv(ltv);
+
+        reserve.configuration
+            .setLiquidationThreshold(
+                liquidationThreshold
             );
-}
 
+        reserve.configuration
+            .setLiquidationBonus(10500);
 
-function _getUserAccountData(
-    address user
-)
-    internal
-    view
-    returns (
-        GenericLogic
-            .UserAccountData
-                memory
-    )
-{
-    return
-        GenericLogic
-            .calculateUserAccountData(
+        reserveList.push(asset);
 
-                reserves,
-
-                reserveList,
-
-                userPositions,
-
-                userConfig,
-
-                user,
-
-                _getAssetPrice
+        AToken aToken =
+            new AToken(
+                IPool(address(this))
             );
-}
 
-
-function addReserve(
-    address asset,
-    uint256 liquidityRate,
-    uint256 variableBorrowRate,
-    uint256 ltv,
-    uint256 liquidationThreshold,
-    address interestRateStrategy
-)
-    external
-    onlyConfigurator
-{
-
-    require(
-        !reserves[asset]
-            .isActive,
-        "RESERVE_EXISTS"
-    );
-
-    reserves[asset] =
-        DataTypes.ReserveData({
-
-        id:
-            uint16(
-                reserveList.length
-            ),
-
-        totalSupplied: 0,
-
-        totalBorrowed: 0,
-
-        isActive: true,
-
-        currentLiquidityRate:
-            liquidityRate,
-
-        currentVariableBorrowRate:
-            variableBorrowRate,
-
-        configuration:
-            ReserveConfiguration.Map({
-                data: 0
-            }),
-
-        interestRateStrategyAddress:
-            interestRateStrategy,
-
-        liquidityIndex:
-            PRECISION,
-
-        borrowIndex:
-            PRECISION,
-
-        lastUpdateTimestamp:
-            uint40(
-                block.timestamp
-            )
-    });
-
-    reserves[asset]
-        .configuration
-        .setLtv(ltv);
-
-    reserves[asset]
-        .configuration
-        .setLiquidationThreshold(
-            liquidationThreshold
-        );
-
-    reserves[asset]
-        .configuration
-        .setLiquidationBonus(
-            10500
-        );
-
-    reserves[asset]
-        .configuration
-        .setActive(true);
-
-    reserves[asset]
-        .configuration
-        .setBorrowingEnabled(
-            true
-        );
-
-    reserveList.push(asset);
-
-    
-
-    AToken aToken =
-        new AToken(
-            "Aave Interest Token",
-            "aTOKEN",
-            address(this)
-        );
-
-    aTokens[asset] =
-        address(aToken);
-
-   
-
-    VariableDebtToken
-        debtToken =
+        VariableDebtToken debtToken =
             new VariableDebtToken(
-                "Variable Debt Token",
-                "vdTOKEN",
-                address(this)
+                IPool(address(this))
             );
 
-    debtTokens[asset] =
-        address(debtToken);
-}
+        aTokens[asset] =
+            address(aToken);
 
+        debtTokens[asset] =
+            address(debtToken);
 
+        emit ReserveAdded(
+            asset,
+            address(aToken),
+            address(debtToken)
+        );
+    }
 
-function updateReserveInterestRates(
-    address asset
-) internal {
+    // =====================================================
+    // SUPPLY
+    // =====================================================
 
-    DataTypes.ReserveData
-        storage reserve =
-            reserves[asset];
+    function supply(
+        address asset,
+        uint256 amount
+    ) external nonReentrant {
 
-    DefaultReserveInterestRateStrategy
-        strategy =
-            DefaultReserveInterestRateStrategy(
-                reserve
-                    .interestRateStrategyAddress
-            );
+        require(amount > 0, "INVALID_AMOUNT");
 
-    uint256 utilization =
-        strategy
-            .calculateUtilizationRate(
-                reserve
-                    .totalBorrowed,
+        DataTypes.ReserveData
+            storage reserve = reserves[asset];
 
-                reserve
-                    .totalSupplied
-            );
-
-    reserve
-        .currentVariableBorrowRate =
-        strategy
-            .calculateBorrowRate(
-                utilization
-            );
-
-    reserve
-        .currentLiquidityRate =
-        strategy
-            .calculateLiquidityRate(
-                reserve
-                    .currentVariableBorrowRate,
-
-                utilization
-            );
-
-    emit ReserveDataUpdated(
-        asset,
-
-        reserve
-            .currentLiquidityRate,
-
-        reserve
-            .currentVariableBorrowRate,
-
-        reserve
-            .liquidityIndex,
-
-        reserve
-            .borrowIndex
-    );
-}
-
-function supply(
-    address asset,
-    uint256 amount
-) external {
-
-    DataTypes.ReserveData
-        storage reserve =
-            reserves[asset];
-
-    reserve.updateState();
-
-    ValidationLogic
-        .validateSupply(
-            reserve,
-            amount
+        require(
+            reserve.configuration.getActive(),
+            "RESERVE_NOT_ACTIVE"
         );
 
-    IERC20(asset)
-        .safeTransferFrom(
+        reserve.updateState();
+
+        IERC20(asset).safeTransferFrom(
             msg.sender,
             address(this),
             amount
         );
 
-    uint256 scaledAmount =
-        (
-            amount *
-            PRECISION
-        ) /
-        reserve
-            .liquidityIndex;
+        uint256 scaledAmount =
+            amount * PRECISION /
+            reserve.liquidityIndex;
 
-    userPositions[
-        msg.sender
-    ][asset]
-        .scaledSupply +=
-            scaledAmount;
+        userPositions[msg.sender][asset]
+            .scaledATokenBalance += scaledAmount;
 
-    userConfig[msg.sender]
-        .setUsingAsCollateral(
-            reserve.id,
-            true
-        );
+        reserve.totalAToken += amount;
 
-    reserve.totalSupplied +=
-        amount;
-
-    AToken(
-        aTokens[asset]
-    ).mint(
-        msg.sender,
-        amount
-    );
-
-    updateReserveInterestRates(
-        asset
-    );
-
-    emit Supply(
-        msg.sender,
-        asset,
-        amount
-    );
-}
-
-
-
-function withdraw(
-    address asset,
-    uint256 amount
-) external {
-
-    DataTypes.ReserveData
-        storage reserve =
-            reserves[asset];
-
-    reserve.updateState();
-
-    uint256 actualSupply =
-        getUserSupply(
-            msg.sender,
-            asset
-        );
-
-    ValidationLogic
-        .validateWithdraw(
-            actualSupply,
-            amount
-        );
-
-    uint256 scaledAmount =
-        (
-            amount *
-            PRECISION
-        ) /
-        reserve
-            .liquidityIndex;
-
-    userPositions[
-        msg.sender
-    ][asset]
-        .scaledSupply -=
-            scaledAmount;
-
-    if (
-        userPositions[
-            msg.sender
-        ][asset]
-            .scaledSupply == 0
-    ) {
-
-        userConfig[msg.sender]
+        userConfigs[msg.sender]
             .setUsingAsCollateral(
                 reserve.id,
-                false
+                true
             );
+
+        emit Supply(
+            msg.sender,
+            asset,
+            amount
+        );
     }
 
-    reserve.totalSupplied -=
-        amount;
+    // =====================================================
+    // WITHDRAW
+    // =====================================================
 
-    AToken(
-        aTokens[asset]
-    ).burn(
-        msg.sender,
-        amount
-    );
+    function withdraw(
+        address asset,
+        uint256 amount
+    ) external nonReentrant {
 
-    IERC20(asset)
-        .safeTransfer(
+        DataTypes.ReserveData
+            storage reserve = reserves[asset];
+
+        reserve.updateState();
+
+        uint256 userBalance =
+            getUserSupply(
+                msg.sender,
+                asset
+            );
+
+        require(
+            userBalance >= amount,
+            "INSUFFICIENT_BALANCE"
+        );
+
+        uint256 scaledAmount =
+            amount * PRECISION /
+            reserve.liquidityIndex;
+
+        userPositions[msg.sender][asset]
+            .scaledATokenBalance -= scaledAmount;
+
+        reserve.totalAToken -= amount;
+
+        IERC20(asset).safeTransfer(
             msg.sender,
             amount
         );
 
-   
-    uint256 healthFactor =
-        _getUserAccountData(
+        uint256 hf = getHealthFactor(
             msg.sender
-        ).healthFactor;
-
-    ValidationLogic
-        .validateHealthFactor(
-            healthFactor
         );
 
-    updateReserveInterestRates(
-        asset
-    );
+        require(
+            hf >= PRECISION,
+            "HF_TOO_LOW"
+        );
 
-    emit Withdraw(
-        msg.sender,
-        asset,
-        amount
-    );
-}
+        emit Withdraw(
+            msg.sender,
+            asset,
+            amount
+        );
+    }
 
+    // =====================================================
+    // BORROW
+    // =====================================================
 
-function borrow(
-    address asset,
-    uint256 amount
-) external {
+    function borrow(
+        address asset,
+        uint256 amount
+    ) external nonReentrant {
 
-    DataTypes.ReserveData
-        storage reserve =
-            reserves[asset];
+        DataTypes.ReserveData
+            storage reserve = reserves[asset];
 
-    reserve.updateState();
+        reserve.updateState();
 
-    GenericLogic
-        .UserAccountData
-            memory accountData =
-                _getUserAccountData(
-                    msg.sender
+        require(
+            IERC20(asset).balanceOf(address(this))
+                >= amount,
+            "NOT_ENOUGH_LIQUIDITY"
+        );
+
+        GenericLogic
+            .CalculateUserAccountDataVars
+                memory vars;
+
+        (
+            vars.totalCollateralBase,
+            vars.totalDebtBase,
+            vars.avgLtv,
+            vars.avgLiquidationThreshold,
+            vars.healthFactor,
+
+        ) = GenericLogic
+                .calculateUserAccountData(
+                    reserves,
+                    reserveList,
+                    userPositions,
+                    userConfigs,
+                    msg.sender,
+                    address(oracle)
                 );
 
-    ValidationLogic
-        .validateBorrow(
-            reserve,
-            accountData,
-            amount
+        uint256 assetPrice =
+            oracle.getAssetPrice(asset);
+
+        uint256 borrowValue =
+            amount * assetPrice /
+            PRECISION;
+
+        uint256 maxBorrow =
+            vars.totalCollateralBase *
+            vars.avgLtv /
+            10000;
+
+        require(
+            vars.totalDebtBase + borrowValue
+                <= maxBorrow,
+            "NOT_ENOUGH_COLLATERAL"
         );
 
-    uint256 scaledBorrow =
-        (
-            amount *
-            PRECISION
-        ) /
-        reserve
-            .borrowIndex;
+        uint256 scaledBorrow =
+            amount * PRECISION /
+            reserve.variableBorrowIndex;
 
-    userPositions[
-        msg.sender
-    ][asset]
-        .scaledBorrow +=
-            scaledBorrow;
+        userPositions[msg.sender][asset]
+            .scaledVariableDebt += scaledBorrow;
 
-    userConfig[msg.sender]
-        .setBorrowing(
-            reserve.id,
-            true
-        );
+        reserve.totalVariableDebt += amount;
 
-    reserve.totalBorrowed +=
-        amount;
+        userConfigs[msg.sender]
+            .setBorrowing(
+                reserve.id,
+                true
+            );
 
-    VariableDebtToken(
-        debtTokens[asset]
-    ).mint(
-        msg.sender,
-        amount
-    );
-
-    IERC20(asset)
-        .safeTransfer(
+        IERC20(asset).safeTransfer(
             msg.sender,
             amount
         );
 
-    updateReserveInterestRates(
-        asset
-    );
-
-    emit Borrow(
-        msg.sender,
-        asset,
-        amount
-    );
-}
-
-
-function repay(
-    address asset,
-    uint256 amount
-) external {
-
-    DataTypes.ReserveData
-        storage reserve =
-            reserves[asset];
-
-    reserve.updateState();
-
-    uint256 actualDebt =
-        getUserBorrow(
+        emit Borrow(
             msg.sender,
-            asset
-        );
-
-    ValidationLogic
-        .validateRepay(
-            actualDebt,
+            asset,
             amount
         );
+    }
 
-    IERC20(asset)
-        .safeTransferFrom(
+    // =====================================================
+    // REPAY
+    // =====================================================
+
+    function repay(
+        address asset,
+        uint256 amount
+    ) external nonReentrant {
+
+        DataTypes.ReserveData
+            storage reserve = reserves[asset];
+
+        reserve.updateState();
+
+        uint256 debt =
+            getUserBorrow(
+                msg.sender,
+                asset
+            );
+
+        require(debt > 0, "NO_DEBT");
+
+        if (amount > debt) {
+            amount = debt;
+        }
+
+        IERC20(asset).safeTransferFrom(
             msg.sender,
             address(this),
             amount
         );
 
-    uint256 scaledAmount =
-        (
-            amount *
-            PRECISION
-        ) /
-        reserve
-            .borrowIndex;
+        uint256 scaledAmount =
+            amount * PRECISION /
+            reserve.variableBorrowIndex;
 
-    userPositions[
-        msg.sender
-    ][asset]
-        .scaledBorrow -=
-            scaledAmount;
+        userPositions[msg.sender][asset]
+            .scaledVariableDebt -= scaledAmount;
 
-    if (
-        userPositions[
-            msg.sender
-        ][asset]
-            .scaledBorrow == 0
-    ) {
+        reserve.totalVariableDebt -= amount;
 
-        userConfig[msg.sender]
-            .setBorrowing(
-                reserve.id,
-                false
-            );
+        emit Repay(
+            msg.sender,
+            asset,
+            amount
+        );
     }
 
-    reserve.totalBorrowed -=
-        amount;
+    // =====================================================
+    // LIQUIDATION
+    // =====================================================
 
-    VariableDebtToken(
-        debtTokens[asset]
-    ).burn(
-        msg.sender,
-        amount
-    );
+    function liquidate(
+        address user,
+        address collateralAsset,
+        address debtAsset,
+        uint256 debtToCover
+    ) external nonReentrant {
 
-    updateReserveInterestRates(
-        asset
-    );
+        uint256 hf =
+            getHealthFactor(user);
 
-    emit Repay(
-        msg.sender,
-        asset,
-        amount
-    );
-}
+        require(
+            hf < PRECISION,
+            "HEALTHY_POSITION"
+        );
 
+        uint256 userDebt =
+            getUserBorrow(
+                user,
+                debtAsset
+            );
 
-function getUserSupply(
-    address user,
-    address asset
-)
-    public
-    view
-    returns (uint256)
-{
-    DataTypes.UserReserveData
-        memory position =
-            userPositions[
-                user
-            ][asset];
+        require(
+            userDebt >= debtToCover,
+            "INVALID_DEBT"
+        );
 
-    DataTypes.ReserveData
-        memory reserve =
-            reserves[asset];
+        IERC20(debtAsset)
+            .safeTransferFrom(
+                msg.sender,
+                address(this),
+                debtToCover
+            );
 
-    return
+        uint256 debtPrice =
+            oracle.getAssetPrice(
+                debtAsset
+            );
+
+        uint256 collateralPrice =
+            oracle.getAssetPrice(
+                collateralAsset
+            );
+
+        uint256 collateralAmount =
+            (debtToCover * debtPrice * 10500)
+            /
+            (collateralPrice * 10000);
+
+        DataTypes.ReserveData
+            storage collateralReserve =
+                reserves[collateralAsset];
+
+        uint256 scaledCollateral =
+            collateralAmount * PRECISION /
+            collateralReserve.liquidityIndex;
+
+        userPositions[user][collateralAsset]
+            .scaledATokenBalance -=
+                scaledCollateral;
+
+        IERC20(collateralAsset)
+            .safeTransfer(
+                msg.sender,
+                collateralAmount
+            );
+
+        emit Liquidation(
+            msg.sender,
+            user,
+            collateralAsset,
+            debtAsset,
+            debtToCover,
+            collateralAmount
+        );
+    }
+
+    // =====================================================
+    // VIEWS
+    // =====================================================
+
+    function getUserSupply(
+        address user,
+        address asset
+    ) public view returns (uint256) {
+
+        UserReserveData
+            memory position =
+                userPositions[user][asset];
+
+        DataTypes.ReserveData
+            memory reserve =
+                reserves[asset];
+
+        return
+            position.scaledATokenBalance
+            * reserve.liquidityIndex
+            / PRECISION;
+    }
+
+    function getUserBorrow(
+        address user,
+        address asset
+    ) public view returns (uint256) {
+
+        UserReserveData
+            memory position =
+                userPositions[user][asset];
+
+        DataTypes.ReserveData
+            memory reserve =
+                reserves[asset];
+
+        return
+            position.scaledVariableDebt
+            * reserve.variableBorrowIndex
+            / PRECISION;
+    }
+
+    function getHealthFactor(
+        address user
+    ) public view returns (uint256) {
+
         (
-            position
-                .scaledSupply *
-            reserve
-                .liquidityIndex
-        ) / PRECISION;
-}
+            ,
+            ,
+            ,
+            ,
+            ,
+            uint256 healthFactor
+        ) = getUserAccountData(user);
 
+        return healthFactor;
+    }
 
-function getUserBorrow(
-    address user,
-    address asset
-)
-    public
-    view
-    returns (uint256)
-{
-    DataTypes.UserReserveData
-        memory position =
-            userPositions[
-                user
-            ][asset];
-
-    DataTypes.ReserveData
-        memory reserve =
-            reserves[asset];
-
-    return
-        (
-            position
-                .scaledBorrow *
-            reserve
-                .borrowIndex
-        ) / PRECISION;
-}
-
-
-function getHealthFactor(
-    address user
-)
-    public
-    view
-    returns (uint256)
-{
-    return
-        _getUserAccountData(
-            user
-        ).healthFactor;
-}
-
-
-function getUserAccountData(
-    address user
-)
-    external
-    view
-    returns (
-        uint256 totalCollateralBase,
-        uint256 totalDebtBase,
-        uint256 availableBorrowsBase,
-        uint256 currentLiquidationThreshold,
-        uint256 ltv,
-        uint256 healthFactor
+    function getUserAccountData(
+        address user
     )
-{
-    GenericLogic
-        .UserAccountData
-            memory data =
-                _getUserAccountData(
-                    user
-                );
-
-    return (
-        data.totalCollateralBase,
-
-        data.totalDebtBase,
-
-        data.availableBorrowsBase,
-
-        data.currentLiquidationThreshold,
-
-        data.ltv,
-
-        data.healthFactor
-    );
+        public
+        view
+        returns (
+            uint256 totalCollateralBase,
+            uint256 totalDebtBase,
+            uint256 availableBorrowsBase,
+            uint256 currentLiquidationThreshold,
+            uint256 ltv,
+            uint256 healthFactor
+        )
+    {
+        return GenericLogic
+            .calculateUserAccountData(
+                reserves,
+                reserveList,
+                userPositions,
+                userConfigs,
+                user,
+                address(oracle)
+            );
+    }
 }
 
-}
 */

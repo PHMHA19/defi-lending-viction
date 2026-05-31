@@ -1,5 +1,5 @@
 import hre from "hardhat";
-
+import fs from "fs";
 async function main() {
 
 const { ethers } =
@@ -307,8 +307,29 @@ configurator.target as string
 console.log("=================================");
 console.log("DEPLOY SUCCESS");
 console.log("=================================");
+
+const addresses = {
+usdc: await usdc.getAddress(),
+weth: await weth.getAddress(),
+provider: await provider.target as string,
+acl: await acl.getAddress(),
+oracle: await oracle.getAddress(),
+pool: await pool.getAddress(),
+configurator: await configurator.getAddress()
+};
+
+fs.writeFileSync(
+"./deployments.json",
+JSON.stringify(addresses, null, 2)
+);
+
+console.log("Addresses saved!");
+
 }
+
 main().catch((error) => {
 console.error(error);
 process.exitCode = 1;
-});
+}
+);
+

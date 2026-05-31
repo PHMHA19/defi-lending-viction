@@ -1,4 +1,24 @@
 import hre from "hardhat";
+import fs from "fs";
+
+const addresses = JSON.parse(
+fs.readFileSync(
+"./deployments.json",
+"utf8"
+)
+);
+
+const poolAddress =
+addresses.pool;
+
+const providerAddress =
+addresses.provider;
+
+const usdcAddress =
+addresses.usdc;
+
+const poolConfiguratorAddress =
+addresses.configurator;
 
 async function main() {
 
@@ -9,37 +29,16 @@ console.log("=================================");
 console.log("INIT RESERVE");
 console.log("=================================");
 
-// =====================================================
-// ADDRESSES
-// =====================================================
-
-const poolConfiguratorAddress =
-"0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575";
-
-const usdcAddress =
-"0x95401dc811bb5740090279Ba06cfA8fcF6113778";
-
-const providerAddress =
-"0x70e0bA845a1A0F2DA3359C97E0285013525FFC49";
 
 // =====================================================
 // CONTRACTS
 // =====================================================
 
-const configurator =
+const pool =
 await ethers.getContractAt(
-"PoolConfigurator",
-poolConfiguratorAddress
+"Pool",
+poolAddress
 );
-
-const provider =
-await ethers.getContractAt(
-"PoolAddressesProvider",
-providerAddress
-);
-
-const poolAddress =
-await provider.getPool();
 
 console.log(
 "Pool:",
@@ -154,57 +153,14 @@ strategy.target
 
 console.log("Initializing reserve...");
 
-await configurator.initReserves([
-{
-aTokenImpl:
+await pool.manualInitReserve(
+usdcAddress,
 aToken.target as string,
+stableDebt.target as string,
+variableDebt.target as string,
+strategy.target as string
+);
 
-
-  stableDebtTokenImpl:
-    stableDebt.target as string,
-
-  variableDebtTokenImpl:
-    variableDebt.target as string,
-
-  underlyingAssetDecimals:
-    6,
-
-  interestRateStrategyAddress:
-    strategy.target as string,
-
-  underlyingAsset:
-    usdcAddress,
-
-  treasury:
-    ethers.ZeroAddress,
-
-  incentivesController:
-    ethers.ZeroAddress,
-
-  aTokenName:
-    "Mini Aave USDC",
-
-  aTokenSymbol:
-    "maUSDC",
-
-  variableDebtTokenName:
-    "Variable Debt USDC",
-
-  variableDebtTokenSymbol:
-    "vdUSDC",
-
-  stableDebtTokenName:
-    "Stable Debt USDC",
-
-  stableDebtTokenSymbol:
-    "sdUSDC",
-
-  params:
-    "0x"
-}
-
-
-]);
 
 console.log("=================================");
 console.log("RESERVE INITIALIZED");
@@ -215,3 +171,5 @@ main().catch((error) => {
 console.error(error);
 process.exitCode = 1;
 });
+
+

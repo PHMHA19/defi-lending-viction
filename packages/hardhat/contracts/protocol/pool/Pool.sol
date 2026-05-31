@@ -573,6 +573,33 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
       _reservesCount++;
     }
   }
+  function manualInitReserve(
+    address asset,
+    address aTokenAddress,
+    address stableDebtAddress,
+    address variableDebtAddress,
+    address interestRateStrategyAddress
+    ) external {
+
+    if (
+      PoolLogic.executeInitReserve(
+        _reserves,
+        _reservesList,
+        DataTypes.InitReserveParams({
+          asset: asset,
+          aTokenAddress: aTokenAddress,
+          stableDebtAddress: stableDebtAddress,
+          variableDebtAddress: variableDebtAddress,
+          interestRateStrategyAddress: interestRateStrategyAddress,
+          reservesCount: _reservesCount,
+          maxNumberReserves: MAX_NUMBER_RESERVES()
+        })
+      )
+    ) {
+      _reservesCount++;
+    }
+
+    }
 
   /// @inheritdoc IPool
   function dropReserve(address asset) external virtual override onlyPoolConfigurator {
