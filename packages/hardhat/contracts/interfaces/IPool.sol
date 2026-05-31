@@ -10,6 +10,30 @@ import {DataTypes} from '../protocol/libraries/types/DataTypes.sol';
  * @notice Defines the basic interface for an Aave Pool.
  */
 interface IPool {
+  /**
+   * @dev Emitted on mintUnbacked()
+   * @param reserve The address of the underlying asset of the reserve
+   * @param user The address initiating the supply
+   * @param onBehalfOf The beneficiary of the supplied assets, receiving the aTokens
+   * @param amount The amount of supplied assets
+   * @param referralCode The referral code used
+   */
+  event MintUnbacked(
+    address indexed reserve,
+    address user,
+    address indexed onBehalfOf,
+    uint256 amount,
+    uint16 indexed referralCode
+  );
+
+  /**
+   * @dev Emitted on backUnbacked()
+   * @param reserve The address of the underlying asset of the reserve
+   * @param backer The address paying for the backing
+   * @param amount The amount added as backing
+   * @param fee The amount paid in fees
+   */
+  event BackUnbacked(address indexed reserve, address indexed backer, uint256 amount, uint256 fee);
 
   /**
    * @dev Emitted on supply()
@@ -186,7 +210,29 @@ interface IPool {
    */
   event MintedToTreasury(address indexed reserve, uint256 amountMinted);
 
+  /**
+   * @notice Mints an `amount` of aTokens to the `onBehalfOf`
+   * @param asset The address of the underlying asset to mint
+   * @param amount The amount to mint
+   * @param onBehalfOf The address that will receive the aTokens
+   * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
+   *   0 if the action is executed directly by the user, without any middle-man
+   */
+  function mintUnbacked(
+    address asset,
+    uint256 amount,
+    address onBehalfOf,
+    uint16 referralCode
+  ) external;
 
+  /**
+   * @notice Back the current unbacked underlying with `amount` and pay `fee`.
+   * @param asset The address of the underlying asset to back
+   * @param amount The amount to back
+   * @param fee The amount paid in fees
+   * @return The backed amount
+   */
+  function backUnbacked(address asset, uint256 amount, uint256 fee) external returns (uint256);
 
   /**
    * @notice Supplies an `amount` of underlying asset into the reserve, receiving in return overlying aTokens.
@@ -574,6 +620,11 @@ interface IPool {
    */
   function ADDRESSES_PROVIDER() external view returns (IPoolAddressesProvider);
 
+  /**
+   * @notice Updates the protocol fee on the bridging
+   * @param bridgeProtocolFee The part of the premium sent to the protocol treasury
+   */
+  function updateBridgeProtocolFee(uint256 bridgeProtocolFee) external;
 
   /**
    * @notice Updates flash loan premiums. Flash loan premium consists of two parts:
@@ -638,7 +689,12 @@ interface IPool {
    */
   function FLASHLOAN_PREMIUM_TOTAL() external view returns (uint128);
 
-  
+  /**
+   * @notice Returns the part of the bridge fees sent to protocol
+   * @return The bridge fee sent to the protocol treasury
+   */
+  function BRIDGE_PROTOCOL_FEE() external view returns (uint256);
+
   /**
    * @notice Returns the part of the flashloan fees sent to protocol
    * @return The flashloan fee sent to the protocol treasury

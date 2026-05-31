@@ -120,6 +120,16 @@ interface IPoolAddressesProvider {
    */
   function getAddress(bytes32 id) external view returns (address);
 
+  /**
+   * @notice General function to update the implementation of a proxy registered with
+   * certain `id`. If there is no proxy registered, it will instantiate one and
+   * set as implementation the `newImplementationAddress`.
+   * @dev IMPORTANT Use this function carefully, only for ids that don't have an explicit
+   * setter function, in order to avoid unexpected consequences
+   * @param id The id
+   * @param newImplementationAddress The address of the new implementation
+   */
+  function setAddressAsProxy(bytes32 id, address newImplementationAddress) external;
 
   /**
    * @notice Sets an address for an id replacing the address saved in the addresses map.
@@ -135,12 +145,25 @@ interface IPoolAddressesProvider {
    */
   function getPool() external view returns (address);
 
+  /**
+   * @notice Updates the implementation of the Pool, or creates a proxy
+   * setting the new `pool` implementation when the function is called for the first time.
+   * @param newPoolImpl The new Pool implementation
+   */
+  function setPoolImpl(address newPoolImpl) external;
 
   /**
    * @notice Returns the address of the PoolConfigurator proxy.
    * @return The PoolConfigurator proxy address
    */
   function getPoolConfigurator() external view returns (address);
+
+  /**
+   * @notice Updates the implementation of the PoolConfigurator, or creates a proxy
+   * setting the new `PoolConfigurator` implementation when the function is called for the first time.
+   * @param newPoolConfiguratorImpl The new PoolConfigurator implementation
+   */
+  function setPoolConfiguratorImpl(address newPoolConfiguratorImpl) external;
 
   /**
    * @notice Returns the address of the price oracle.
@@ -201,7 +224,4 @@ interface IPoolAddressesProvider {
    * @param newDataProvider The address of the new DataProvider
    */
   function setPoolDataProvider(address newDataProvider) external;
-
-  function setPool(address newPool) external;
-  function setPoolConfigurator(address newConfigurator) external;
 }
