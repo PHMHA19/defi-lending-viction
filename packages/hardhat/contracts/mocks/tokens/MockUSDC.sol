@@ -8,7 +8,18 @@ contract MockUSDC is ERC20 {
 constructor()
     ERC20("Mock USDC", "USDC")
 {
-    _mint(msg.sender, 1000000 * 10**6);
+    _mint(
+        msg.sender,
+        1000000 ether
+    );
 }
+
+function mint(
+    address to,
+    uint256 amount
+) external {
+    _mint(to, amount);
+}
+
 
 }

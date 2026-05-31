@@ -37,7 +37,8 @@ import {PoolStorage} from './PoolStorage.sol';
  */
 contract Pool is VersionedInitializable, PoolStorage, IPool {
   using ReserveLogic for DataTypes.ReserveData;
-
+  using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
+  
   uint256 public constant POOL_REVISION = 0x1;
   IPoolAddressesProvider public immutable ADDRESSES_PROVIDER;
 
@@ -598,6 +599,24 @@ contract Pool is VersionedInitializable, PoolStorage, IPool {
     ) {
       _reservesCount++;
     }
+    DataTypes.ReserveConfigurationMap
+    memory config =
+    _reserves[asset]
+    .configuration;
+
+    config.setActive(true);
+
+    config.setBorrowingEnabled(true);
+
+    config.setLtv(7500);
+
+    config.setLiquidationThreshold(8000);
+
+    config.setLiquidationBonus(10500);
+
+
+    _reserves[asset]
+    .configuration = config;
 
     }
 
