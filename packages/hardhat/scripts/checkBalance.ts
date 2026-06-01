@@ -1,4 +1,3 @@
-
 import { ethers } from "ethers";
 
 async function main() {
@@ -8,9 +7,9 @@ async function main() {
     );
 
   const usdc =
-    "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48";
+    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 
-  const wallet =
+  const user =
     "0xE55d6FbFD2DA1562187BBc5B874a070a490F410B";
 
   const contract =
@@ -23,12 +22,11 @@ async function main() {
     );
 
   const balance =
-    await contract.balanceOf(
-      wallet,
-    );
+    await contract.balanceOf(user);
 
   console.log(
-      balance.toString(),
+    "USDC:",
+    Number(balance) / 1e6,
   );
 }
 

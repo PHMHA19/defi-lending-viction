@@ -1,37 +1,120 @@
-import { writeContract, readContract } from "@wagmi/core";
+
+import {writeContract,readContract,} from "@wagmi/core";
+
 import { wagmiConfig } from "~~/services/web3/wagmiConfig";
 
 import { poolAbi } from "./poolAbi";
-import { TOKENS, getPoolAddress } from "./addresses";
 
-export async function supplyUSDC(
+import { erc20Abi } from "./erc20Abi";
+
+import {AAVE_POOL,} from "./addresses";
+
+/**
+ * Approve ERC20 token
+ */
+export async function approveAsset(
+  tokenAddress: `0x${string}`,
+  amount: bigint,
+) {
+  return writeContract(
+    wagmiConfig,
+    {
+      address:
+        tokenAddress,
+
+      abi:
+        erc20Abi,
+
+      functionName:
+        "approve",
+
+      args: [
+        AAVE_POOL,
+        amount,
+      ],
+    },
+  );
+}
+
+/**
+ * Supply asset to Aave
+ */
+export async function supplyAsset(
+  tokenAddress: `0x${string}`,
   amount: bigint,
   userAddress: `0x${string}`,
 ) {
-  const poolAddress = await getPoolAddress();
+  return writeContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL,
 
-  return writeContract(wagmiConfig, {
-    address: poolAddress,
-    abi: poolAbi,
-    functionName: "supply",
-    args: [
-      TOKENS.USDC,
-      amount,
-      userAddress,
-      0,
-    ],
-  });
+      abi:
+        poolAbi,
+
+      functionName:
+        "supply",
+
+      args: [
+        tokenAddress,
+        amount,
+        userAddress,
+        0,
+      ],
+    },
+  );
 }
 
+/**
+ * Get ERC20 allowance
+ */
+export async function getAssetAllowance(
+  tokenAddress: `0x${string}`,
+  owner: `0x${string}`,
+) {
+  return readContract(
+    wagmiConfig,
+    {
+      address:
+        tokenAddress,
+
+      abi:
+        erc20Abi,
+
+      functionName:
+        "allowance",
+
+      args: [
+        owner,
+        AAVE_POOL,
+      ],
+    },
+  );
+}
+
+/**
+ * Get user account data
+ */
 export async function getUserAccountData(
   userAddress: `0x${string}`,
 ) {
-  const poolAddress = await getPoolAddress();
+  return readContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL,
 
-  return readContract(wagmiConfig, {
-    address: poolAddress,
-    abi: poolAbi,
-    functionName: "getUserAccountData",
-    args: [userAddress],
-  });
+      abi:
+        poolAbi,
+
+      functionName:
+        "getUserAccountData",
+
+      args: [
+        userAddress,
+      ],
+    },
+  );
 }
+
