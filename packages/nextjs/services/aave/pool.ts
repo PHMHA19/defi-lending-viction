@@ -118,3 +118,27 @@ export async function getUserAccountData(
   );
 }
 
+
+
+export async function getReservesList(): Promise<
+  `0x${string}`[]
+> {
+  return await readContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL,
+
+      abi:
+        poolAbi,
+
+      functionName:
+        "getReservesList",
+    },
+  ) as `0x${string}`[];
+}
+
+
+
+
+

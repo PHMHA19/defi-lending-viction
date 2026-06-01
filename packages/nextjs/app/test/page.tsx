@@ -2,8 +2,8 @@
 "use client";
 
 import {
-  useState,
   useEffect,
+  useState,
 } from "react";
 
 import {
@@ -16,13 +16,26 @@ import {
 
 import {
   approveAsset,
-  supplyAsset,
   getUserAccountData,
+  supplyAsset,
 } from "~~/services/aave/pool";
 
 import {
   getAllReserveData,
 } from "~~/services/aave/reserve";
+
+import type {
+  ReserveData,
+  UserAccountData,
+} from "~~/types/aave";
+
+import {
+  formatAPY,
+  formatHealthFactor,
+  formatLTV,
+  formatTokenAmount,
+  formatUSD,
+} from "~~/utils/aaveFormat";
 
 export default function TestPage() {
   const {
@@ -35,12 +48,17 @@ export default function TestPage() {
   const [
     accountData,
     setAccountData,
-  ] = useState<any>(null);
+  ] =
+    useState<UserAccountData | null>(
+      null,
+    );
 
   const [
     reserves,
     setReserves,
-  ] = useState<any[]>([]);
+  ] = useState<
+    ReserveData[]
+  >([]);
 
   useEffect(() => {
     loadReserves();
@@ -78,29 +96,33 @@ export default function TestPage() {
         data,
       );
 
-      const formattedData = {
-        totalCollateral:
-          Number(data[0]) / 1e8,
+      const formattedData: UserAccountData =
+        {
+          totalCollateral:
+            formatUSD(
+              data[0],
+            ),
 
-        totalDebt:
-          Number(data[1]) / 1e8,
+          totalDebt:
+            formatUSD(
+              data[1],
+            ),
 
-        availableBorrows:
-          Number(data[2]) / 1e8,
+          availableBorrows:
+            formatUSD(
+              data[2],
+            ),
 
-        ltv:
-          Number(data[4]) / 100,
+          ltv:
+            formatLTV(
+              data[4],
+            ),
 
-        healthFactor:
-          data[1] === 0n
-            ? "∞"
-            : (
-                Number(
-                  data[5] /
-                  10n ** 16n,
-                ) / 100
-              ).toFixed(2),
-      };
+          healthFactor:
+            formatHealthFactor(
+              data[5],
+            ),
+        };
 
       setAccountData(
         formattedData,
@@ -172,9 +194,12 @@ export default function TestPage() {
       <div className="flex gap-4">
         <button
           className="btn btn-primary"
-          onClick={handleSupply}
+          onClick={
+            handleSupply
+          }
           disabled={
-            !address || loading
+            !address ||
+            loading
           }
         >
           {loading
@@ -198,6 +223,7 @@ export default function TestPage() {
             <strong>
               Total Collateral:
             </strong>{" "}
+            $
             {
               accountData.totalCollateral
             }
@@ -207,6 +233,7 @@ export default function TestPage() {
             <strong>
               Total Debt:
             </strong>{" "}
+            $
             {
               accountData.totalDebt
             }
@@ -216,6 +243,7 @@ export default function TestPage() {
             <strong>
               Available Borrows:
             </strong>{" "}
+            $
             {
               accountData.availableBorrows
             }
@@ -251,22 +279,26 @@ export default function TestPage() {
           {reserves.map(
             reserve => (
               <div
-                key={reserve.asset}
+                key={
+                  reserve.asset
+                }
                 className="border p-4 rounded-lg"
               >
                 <div>
                   <strong>
                     Asset:
                   </strong>{" "}
-                  {reserve.asset}
+                  {
+                    reserve.symbol
+                  }
                 </div>
 
                 <div>
                   <strong>
                     Supply APY:
                   </strong>{" "}
-                  {reserve.liquidityRate.toFixed(
-                    2,
+                  {formatAPY(
+                    reserve.liquidityRate,
                   )}
                   %
                 </div>
@@ -275,10 +307,20 @@ export default function TestPage() {
                   <strong>
                     Borrow APY:
                   </strong>{" "}
-                  {reserve.variableBorrowRate.toFixed(
-                    2,
+                  {formatAPY(
+                    reserve.variableBorrowRate,
                   )}
                   %
+                </div>
+
+                <div>
+                  <strong>
+                    Liquidity:
+                  </strong>{" "}
+                  {formatTokenAmount(
+                    reserve.liquidity,
+                    reserve.decimals,
+                  )}
                 </div>
               </div>
             ),

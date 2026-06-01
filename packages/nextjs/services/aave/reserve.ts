@@ -9,41 +9,28 @@ import {
 
 import {
   AAVE_POOL_DATA_PROVIDER,
-  TOKENS,
 } from "./addresses";
 
 import {
   poolDataProviderAbi,
 } from "./poolDataProviderAbi";
 
-const RESERVES = [
-  {
-    symbol: "USDC",
 
-    address:
-      TOKENS.USDC as `0x${string}`,
+import type {
+  ReserveData,
+} from "~~/types/aave";
 
-    decimals: 6,
-  },
 
-  {
-    symbol: "DAI",
+import {
+  getReservesList,
+} from "./pool";
 
-    address:
-      TOKENS.DAI as `0x${string}`,
+import {
+  getTokenMetadata,
+} from "./token";
 
-    decimals: 18,
-  },
 
-  {
-    symbol: "WETH",
 
-    address:
-      TOKENS.WETH as `0x${string}`,
-
-    decimals: 18,
-  },
-] as const;
 
 export async function getReserveData(
   asset: `0x${string}`,
@@ -65,43 +52,157 @@ export async function getReserveData(
   );
 }
 
+
+export async function getReserveConfigurationData(
+  asset: `0x${string}`,
+) {
+  return readContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL_DATA_PROVIDER,
+
+      abi:
+        poolDataProviderAbi,
+
+      functionName:
+        "getReserveConfigurationData",
+
+      args: [asset],
+    },
+  );
+}
+
+
+
+
+function mapReserveData(
+  reserve: {
+    symbol: string;
+
+    address: `0x${string}`;
+
+    decimals: number;
+  },
+
+  reserveData: any,
+
+  configData: any,
+): ReserveData {
+
+return {
+  symbol:
+    reserve.symbol,
+
+  asset:
+    reserve.address,
+
+  decimals:
+    reserve.decimals,
+
+  liquidityRate:
+    reserveData[4],
+
+  variableBorrowRate:
+    reserveData[5],
+
+  liquidity:
+    reserveData[0],
+
+  ltv:
+    configData[1],
+
+  liquidationThreshold:
+    configData[2],
+
+  reserveFactor:
+    configData[4],
+
+  usageAsCollateralEnabled:
+    configData[5],
+
+  borrowingEnabled:
+    configData[6],
+
+  isActive:
+    configData[8],
+
+  isFrozen:
+    configData[9],
+};
+}
+
+
+
+
 export async function getAllReserveData() {
+  /**
+   * Load all reserve addresses
+   * directly from Aave Pool
+   */
+  const reserveAddresses =
+    await getReservesList();
+
+  /**
+   * Limit reserves for localhost performance
+   */
+  const limitedReserves =
+    reserveAddresses.slice(
+      0,
+      8,
+    );
+  
+
+
   return Promise.all(
-    RESERVES.map(
-      async reserve => {
-        const data =
-          await getReserveData(
-            reserve.address,
+    limitedReserves.map(
+      async asset => {
+        /**
+         * Load token metadata
+         */
+        const metadata =
+          await getTokenMetadata(
+            asset,
           );
 
-        return {
+        /**
+         * Load reserve data
+         */
+        const data =
+          await getReserveData(
+            asset,
+          );
+        
+        const configData =
+          await getReserveConfigurationData(
+            asset,
+          );
+
+
+        
+      return mapReserveData(
+        {
           symbol:
-            reserve.symbol,
+            metadata.symbol,
 
-          asset:
-            reserve.address,
+          address:
+            asset,
 
-          liquidityRate:
-            Number(
-              data[4],
-            ) /
-            1e25,
+          decimals:
+            metadata.decimals,
+        },
 
-          variableBorrowRate:
-            Number(
-              data[5],
-            ) /
-            1e25,
+        data,
 
-          liquidity:
-            Number(
-              data[0],
-            ) /
-            10 **
-              reserve.decimals,
-        };
+        configData,
+      );
+
       },
     ),
   );
 }
+
+
+
+
 
