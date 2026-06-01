@@ -20,7 +20,7 @@ export default defineConfig({
   solidity: {
     profiles: {
       default: {
-        version: "0.8.30",
+        version: "0.8.10",
         settings: {
           optimizer: {
             enabled: true,
@@ -51,13 +51,23 @@ export default defineConfig({
       type: "http",
       url: "http://127.0.0.1:8545",
     },
+    
+  localhost: {
+    type: "http",
+    url: "http://127.0.0.1:8545",
+  },
+
+  
     hardhat: {
       type: "edr-simulated",
+
       forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${providerApiKey}`,
-        enabled: process.env.MAINNET_FORKING_ENABLED === "true",
+        url:
+          "https://eth-mainnet.g.alchemy.com/v2/0qgI9jbbqUKNkvQpaEDHJ",
       },
     },
+
+
     mainnet: {
       type: "http",
       url: "https://mainnet.rpc.buidlguidl.com",
