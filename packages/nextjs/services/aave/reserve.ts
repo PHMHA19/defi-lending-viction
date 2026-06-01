@@ -16,9 +16,14 @@ import {
 } from "./poolDataProviderAbi";
 
 
+
 import type {
   ReserveData,
+  RawReserveData,
+  ReserveConfigurationData,
 } from "~~/types/aave";
+
+
 
 
 import {
@@ -35,7 +40,7 @@ import {
 export async function getReserveData(
   asset: `0x${string}`,
 ) {
-  return readContract(
+  return await readContract(
     wagmiConfig,
     {
       address:
@@ -53,10 +58,13 @@ export async function getReserveData(
 }
 
 
+
+
+
 export async function getReserveConfigurationData(
   asset: `0x${string}`,
 ) {
-  return readContract(
+  return await readContract(
     wagmiConfig,
     {
       address:
@@ -72,6 +80,8 @@ export async function getReserveConfigurationData(
     },
   );
 }
+
+
 
 
 
@@ -101,34 +111,34 @@ return {
     reserve.decimals,
 
   liquidityRate:
-    reserveData[4],
+    reserveData.liquidityRate,
 
   variableBorrowRate:
-    reserveData[5],
+    reserveData.variableBorrowRate,
 
   liquidity:
-    reserveData[0],
+    reserveData.totalAToken,
 
   ltv:
-    configData[1],
+    configData.ltv,
 
   liquidationThreshold:
-    configData[2],
+    configData.liquidationThreshold,
 
   reserveFactor:
-    configData[4],
+    configData.reserveFactor,
 
   usageAsCollateralEnabled:
-    configData[5],
+    configData.usageAsCollateralEnabled,
 
   borrowingEnabled:
-    configData[6],
+    configData.borrowingEnabled,
 
   isActive:
-    configData[8],
+    configData.isActive,
 
   isFrozen:
-    configData[9],
+    configData.isFrozen,
 };
 }
 

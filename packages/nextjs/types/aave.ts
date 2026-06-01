@@ -29,6 +29,65 @@ export type ReserveData = {
 };
 
 
+export type RawReserveData = {
+  unbacked: bigint;
+
+  accruedToTreasuryScaled:
+    bigint;
+
+  totalAToken: bigint;
+
+  totalStableDebt: bigint;
+
+  totalVariableDebt: bigint;
+
+  liquidityRate: bigint;
+
+  variableBorrowRate: bigint;
+
+  stableBorrowRate: bigint;
+
+  averageStableBorrowRate:
+    bigint;
+
+  liquidityIndex: bigint;
+
+  variableBorrowIndex:
+    bigint;
+
+  lastUpdateTimestamp:
+    bigint;
+};
+
+export type ReserveConfigurationData =
+  {
+    decimals: bigint;
+
+    ltv: bigint;
+
+    liquidationThreshold:
+      bigint;
+
+    liquidationBonus:
+      bigint;
+
+    reserveFactor: bigint;
+
+    usageAsCollateralEnabled:
+      boolean;
+
+    borrowingEnabled:
+      boolean;
+
+    stableBorrowRateEnabled:
+      boolean;
+
+    isActive: boolean;
+
+    isFrozen: boolean;
+  };
+
+
 export type UserAccountData = {
   totalCollateral: string;
 
