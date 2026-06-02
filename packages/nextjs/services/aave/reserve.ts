@@ -83,9 +83,6 @@ export async function getReserveConfigurationData(
 
 
 
-
-
-
 function mapReserveData(
   reserve: {
     symbol: string;
@@ -100,47 +97,131 @@ function mapReserveData(
   configData: any,
 ): ReserveData {
 
-return {
-  symbol:
-    reserve.symbol,
+  const normalizedReserveData:
+    RawReserveData = {
+    unbacked:
+      reserveData[0],
 
-  asset:
-    reserve.address,
+    accruedToTreasuryScaled:
+      reserveData[1],
 
-  decimals:
-    reserve.decimals,
+    totalAToken:
+      reserveData[2],
 
-  liquidityRate:
-    reserveData.liquidityRate,
+    totalStableDebt:
+      reserveData[3],
 
-  variableBorrowRate:
-    reserveData.variableBorrowRate,
+    totalVariableDebt:
+      reserveData[4],
 
-  liquidity:
-    reserveData.totalAToken,
+    liquidityRate:
+      reserveData[5],
 
-  ltv:
-    configData.ltv,
+    variableBorrowRate:
+      reserveData[6],
 
-  liquidationThreshold:
-    configData.liquidationThreshold,
+    stableBorrowRate:
+      reserveData[7],
 
-  reserveFactor:
-    configData.reserveFactor,
+    averageStableBorrowRate:
+      reserveData[8],
 
-  usageAsCollateralEnabled:
-    configData.usageAsCollateralEnabled,
+    liquidityIndex:
+      reserveData[9],
 
-  borrowingEnabled:
-    configData.borrowingEnabled,
+    variableBorrowIndex:
+      reserveData[10],
 
-  isActive:
-    configData.isActive,
+    lastUpdateTimestamp:
+      reserveData[11],
+  };
 
-  isFrozen:
-    configData.isFrozen,
-};
+  const normalizedConfigData:
+    ReserveConfigurationData = {
+    decimals:
+      configData[0],
+
+    ltv:
+      configData[1],
+
+    liquidationThreshold:
+      configData[2],
+
+    liquidationBonus:
+      configData[3],
+
+    reserveFactor:
+      configData[4],
+
+    usageAsCollateralEnabled:
+      configData[5],
+
+    borrowingEnabled:
+      configData[6],
+
+    stableBorrowRateEnabled:
+      configData[7],
+
+    isActive:
+      configData[8],
+
+    isFrozen:
+      configData[9],
+  };
+
+  return {
+    symbol:
+      reserve.symbol,
+
+    asset:
+      reserve.address,
+
+    decimals:
+      reserve.decimals,
+
+    liquidityRate:
+      normalizedReserveData
+        .liquidityRate,
+
+    variableBorrowRate:
+      normalizedReserveData
+        .variableBorrowRate,
+
+    liquidity:
+      normalizedReserveData
+        .totalAToken,
+
+    ltv:
+      normalizedConfigData
+        .ltv,
+
+    liquidationThreshold:
+      normalizedConfigData
+        .liquidationThreshold,
+
+    reserveFactor:
+      normalizedConfigData
+        .reserveFactor,
+
+    usageAsCollateralEnabled:
+      normalizedConfigData
+        .usageAsCollateralEnabled,
+
+    borrowingEnabled:
+      normalizedConfigData
+        .borrowingEnabled,
+
+    isActive:
+      normalizedConfigData
+        .isActive,
+
+    isFrozen:
+      normalizedConfigData
+        .isFrozen,
+  };
 }
+
+
 
 
 
@@ -211,8 +292,4 @@ export async function getAllReserveData() {
     ),
   );
 }
-
-
-
-
 
