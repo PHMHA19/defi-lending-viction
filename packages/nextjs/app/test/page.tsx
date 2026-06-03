@@ -58,6 +58,55 @@ import type {
 } from "~~/types/aave";
 
 
+import {
+  DashboardHeader,
+} from "~~/components/aave/DashboardHeader";
+
+
+import {
+  AccountOverview,
+} from "~~/components/aave/AccountOverview";
+
+
+import {
+  ActionPanel,
+} from "~~/components/aave/ActionPanel";
+
+
+import {
+  SupplyCard,
+} from "~~/components/aave/SupplyCard";
+
+import {
+  BorrowCard,
+} from "~~/components/aave/BorrowCard";
+
+
+import {
+  WithdrawCard,
+} from "~~/components/aave/WithdrawCard";
+
+
+import {
+  RepayCard,
+} from "~~/components/aave/RepayCard";
+
+import {
+  MarketsTable,
+} from "~~/components/aave/MarketsTable";
+
+import {
+  PositionsTable,
+} from "~~/components/aave/PositionsTable";
+
+import {
+  WalletBalancesTable,
+} from "~~/components/aave/WalletBalancesTable";
+
+
+
+
+
 export default function TestPage() {
   const {
     address,
@@ -693,530 +742,175 @@ const [
 
 
   return (
-    <div className="p-10 space-y-6">
-      <h1 className="text-4xl font-bold">
-        Aave Dashboard
-      </h1>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
 
-      <div className="flex gap-4">
-        <button
-          className="btn btn-primary"
-          onClick={
-            handleSupply
+      <div className="max-w-7xl mx-auto p-8 space-y-8 relative z-10 space-y-8">
+
+        <DashboardHeader />
+    
+        <AccountOverview
+          accountData={
+            accountData
           }
-          disabled={
-            !address ||
-            loading
-          }
-        >
-          {loading
-            ? "Loading..."
-            : "Supply"}
-        </button>
-
-        <button
-          className="btn btn-secondary"
-          onClick={
-            loadAccountData
-          }
-        >
-          Refresh Position
-        </button>
-      </div>
-
-     
-      <select
-        className="select select-bordered"
-
-        value={
+        />
+      <ActionPanel>
+      <SupplyCard
+        selectedAsset={
           selectedAsset
         }
 
-        onChange={e =>
-          setSelectedAsset(
-            e.target
-              .value as `0x${string}`,
-          )
+        setSelectedAsset={
+          setSelectedAsset
         }
-      >
-        <option value="">
-          Select Asset
-        </option>
 
-        {walletBalances.map(
-          balance => (
-            <option
-              key={
-                balance.asset
-              }
-
-              value={
-                balance.asset
-              }
-            >
-              {
-                balance.symbol
-              }
-            </option>
-          ),
-        )}
-      </select>
-
-      <input
-        type="text"
-
-        placeholder="Amount"
-        
-
-
-        className="input input-bordered"
-
-        value={
+        supplyAmount={
           supplyAmount
         }
 
-        onChange={e =>
-          setSupplyAmount(
-            e.target.value,
-          )
+        setSupplyAmount={
+          setSupplyAmount
+        }
+
+        walletBalances={
+          walletBalances
+        }
+
+        handleSupply={
+          handleSupply
+        }
+
+        loading={
+          loading
+        }
+
+     
+        address={
+          address as
+            `0x${string}` |
+            undefined
+        }
+
+      />
+      
+      <BorrowCard
+        borrowAssetAddress={
+          borrowAssetAddress
+        }
+
+        setBorrowAssetAddress={
+          setBorrowAssetAddress
+        }
+
+        borrowAmount={
+          borrowAmount
+        }
+
+        setBorrowAmount={
+          setBorrowAmount
+        }
+
+        reserves={
+          reserves
+        }
+
+        handleBorrow={
+          handleBorrow
+        }
+
+        address={
+          address as
+            `0x${string}` |
+            undefined
         }
       />
-      <select
-          className="select select-bordered"
-
-          value={
-            borrowAssetAddress
-          }
-
-          onChange={e =>
-            setBorrowAssetAddress(
-              e.target
-                .value as `0x${string}`,
-            )
-          }
-        >
-          <option value="">
-            Select Borrow Asset
-          </option>
-
-          {reserves.map(
-            reserve => (
-              <option
-                key={
-                  reserve.asset
-                }
-
-                value={
-                  reserve.asset
-                }
-              >
-                {
-                  reserve.symbol
-                }
-              </option>
-            ),
-          )}
-        </select>
-
-        <input
-          type="text"
-
-          placeholder="Borrow Amount"
-
-          className="input input-bordered"
-
-          value={
-            borrowAmount
-          }
-
-          onChange={e =>
-            setBorrowAmount(
-              e.target.value,
-            )
-          }
-        />
-
-        <button
-          className="btn btn-accent"
-
-          onClick={
-            handleBorrow
-          }
-
-          disabled={!address}
-        >
-          Borrow
-        </button>
-        <select
-          className="select select-bordered"
-
-          value={
-            withdrawAssetAddress
-          }
-
-          onChange={e =>
-            setWithdrawAssetAddress(
-              e.target
-                .value as `0x${string}`,
-            )
-          }
-        >
-          <option value="">
-            Select Withdraw Asset
-          </option>
-
-          {userPositions.map(
-            position => (
-              <option
-                key={
-                  position.asset
-                }
-
-                value={
-                  position.asset
-                }
-              >
-                {
-                  position.symbol
-                }
-              </option>
-            ),
-          )}
-        </select>
-
-        <input
-          type="text"
-
-          placeholder="Withdraw Amount"
-
-          className="input input-bordered"
-
-          value={
-            withdrawAmount
-          }
-
-          onChange={e =>
-            setWithdrawAmount(
-              e.target.value,
-            )
-          }
-        />
-
-        <button
-          className="btn btn-warning"
-
-          onClick={
-            handleWithdraw
-          }
-
-          disabled={!address}
-        >
-          Withdraw
-        </button>
-
-      
-        <select
-          className="select select-bordered"
-
-          value={
-            repayAssetAddress
-          }
-
-          onChange={e =>
-            setRepayAssetAddress(
-              e.target
-                .value as `0x${string}`,
-            )
-          }
-        >
-          <option value="">
-            Select Repay Asset
-          </option>
-
-          {userPositions
-            .filter(
-              position =>
-                position.variableDebt >
-                0n,
-            )
-            .map(
-              position => (
-                <option
-                  key={
-                    position.asset
-                  }
-
-                  value={
-                    position.asset
-                  }
-                >
-                  {
-                    position.symbol
-                  }
-                </option>
-              ),
-            )}
-        </select>
-
-        <input
-          type="text"
-
-          placeholder="Repay Amount"
-
-          className="input input-bordered"
-
-          value={
-            repayAmount
-          }
-
-          onChange={e =>
-            setRepayAmount(
-              e.target.value,
-            )
-          }
-        />
-
-        <button
-          className="btn btn-success"
-
-          onClick={
-            handleRepay
-          }
-
-          disabled={!address}
-        >
-          Repay
-        </button>
-
-
-
-
-
-
-      {accountData && (
-        <div className="space-y-4 border p-6 rounded-xl">
-          <div>
-            <strong>
-              Total Collateral:
-            </strong>{" "}
-            $
-            {
-              accountData.totalCollateral
-            }
-          </div>
-
-          <div>
-            <strong>
-              Total Debt:
-            </strong>{" "}
-            $
-            {
-              accountData.totalDebt
-            }
-          </div>
-
-          <div>
-            <strong>
-              Available Borrows:
-            </strong>{" "}
-            $
-            {
-              accountData.availableBorrows
-            }
-          </div>
-
-          <div>
-            <strong>
-              LTV:
-            </strong>{" "}
-            {
-              accountData.ltv
-            }
-            %
-          </div>
-
-          <div>
-            <strong>
-              Health Factor:
-            </strong>{" "}
-            {
-              accountData.healthFactor
-            }
-          </div>
-        </div>
-      )}
     
-      <div className="border p-6 rounded-xl">
-        <h2 className="text-2xl font-bold mb-4">
-          Wallet Balances
-        </h2>
+      <WithdrawCard
+        withdrawAssetAddress={
+          withdrawAssetAddress
+        }
 
-        <div className="space-y-4">
+        setWithdrawAssetAddress={
+          setWithdrawAssetAddress
+        }
 
-          {walletBalances.length === 0 ? (
-            <div className="opacity-70">
-              No wallet balances
-            </div>
-          ) : (
-            walletBalances.map(
-              balance => (
-                <div
-                  key={
-                    balance.asset
-                  }
-                  className="border p-4 rounded-lg"
-                >
-                  <div>
-                    <strong>
-                      Asset:
-                    </strong>{" "}
-                    {
-                      balance.symbol
-                    }
-                  </div>
+        withdrawAmount={
+          withdrawAmount
+        }
 
-                  <div>
-                    <strong>
-                      Balance:
-                    </strong>{" "}
-                    {formatTokenAmount(
-                      balance.balance,
-                      balance.decimals,
-                    )}
-                  </div>
-                </div>
-              ),
-            )
-          )}
+        setWithdrawAmount={
+          setWithdrawAmount
+        }
 
-        </div>
-      </div>
+        userPositions={
+          userPositions
+        }
 
+        handleWithdraw={
+          handleWithdraw
+        }
 
-      <div className="border p-6 rounded-xl">
-        <h2 className="text-2xl font-bold mb-4">
-          Aave Markets
-        </h2>
+        address={
+          address as
+            `0x${string}` |
+            undefined
+        }
+      />
+     
+      <RepayCard
+        repayAssetAddress={
+          repayAssetAddress
+        }
 
-        <div className="space-y-4">
-          {reserves.map(
-            reserve => (
-              <div
-                key={
-                  reserve.asset
-                }
-                className="border p-4 rounded-lg"
-              >
-                <div>
-                  <strong>
-                    Asset:
-                  </strong>{" "}
-                  {
-                    reserve.symbol
-                  }
-                </div>
+        setRepayAssetAddress={
+          setRepayAssetAddress
+        }
 
-                <div>
-                  <strong>
-                    Supply APY:
-                  </strong>{" "}
-                  {formatAPY(
-                    reserve.liquidityRate,
-                  )}
-                  %
-                </div>
+        repayAmount={
+          repayAmount
+        }
 
-                <div>
-                  <strong>
-                    Borrow APY:
-                  </strong>{" "}
-                  {formatAPY(
-                    reserve.variableBorrowRate,
-                  )}
-                  %
-                </div>
+        setRepayAmount={
+          setRepayAmount
+        }
 
-                <div>
-                  <strong>
-                    Liquidity:
-                  </strong>{" "}
-                  {formatTokenAmount(
-                    reserve.liquidity,
-                    reserve.decimals,
-                  )}
-                </div>
-              </div>
-            ),
-          )}
-        </div>
-      </div>
+        userPositions={
+          userPositions
+        }
+
+        handleRepay={
+          handleRepay
+        }
+
+        address={
+          address as
+            `0x${string}` |
+            undefined
+        }
+      />
+
       
-      <div className="border p-6 rounded-xl">
-      <h2 className="text-2xl font-bold mb-4">
-        Your Positions
-      </h2>
+      </ActionPanel>
+      
+      <WalletBalancesTable
+        walletBalances={
+          walletBalances
+        }
+      />
 
-      <div className="space-y-4">
+      <MarketsTable
+        reserves={
+          reserves
+        }
+      />
 
-        {userPositions.length === 0 ? (
-          <div className="opacity-70">
-            No active positions
-          </div>
-        ) : (
-          userPositions.map(
-            position => (
-              <div
-                key={
-                  position.asset
-                }
-                className="border p-4 rounded-lg"
-              >
-                <div>
-                  <strong>
-                    Asset:
-                  </strong>{" "}
-                  {
-                    position.symbol
-                  }
-                </div>
-
-                <div>
-                  <strong>
-                    Supplied:
-                  </strong>{" "}
-                  {formatTokenAmount(
-                    position.supplied,
-                    position.decimals,
-                  )}
-                </div>
-
-                <div>
-                  <strong>
-                    Variable Debt:
-                  </strong>{" "}
-                  {formatTokenAmount(
-                    position.variableDebt,
-                    position.decimals,
-                  )}
-                </div>
-
-                <div>
-                  <strong>
-                    Collateral:
-                  </strong>{" "}
-                  {position
-                    .usageAsCollateralEnabled
-                    ? "Enabled"
-                    : "Disabled"}
-                </div>
-              </div>
-            ),
-          )
-        )}
-
-      </div>
-      </div>
+      <PositionsTable
+        userPositions={
+          userPositions
+        }
+      />
     </div>
-  );
+  </div>
+);
 }
+
 

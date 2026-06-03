@@ -1,34 +1,34 @@
 
 import {
-  AaveV3Ethereum,
+  AaveV3Sepolia,
 } from "@bgd-labs/aave-address-book";
 
 export const AAVE_POOL =
-  AaveV3Ethereum.POOL;
+  AaveV3Sepolia.POOL;
 
 export const AAVE_ORACLE =
-  AaveV3Ethereum.ORACLE;
+  AaveV3Sepolia.ORACLE;
 
 export const AAVE_POOL_DATA_PROVIDER =
-  AaveV3Ethereum.AAVE_PROTOCOL_DATA_PROVIDER;
+  AaveV3Sepolia.AAVE_PROTOCOL_DATA_PROVIDER;
 
 export const AAVE_UI_POOL_DATA_PROVIDER =
-  AaveV3Ethereum.UI_POOL_DATA_PROVIDER;
+  AaveV3Sepolia.UI_POOL_DATA_PROVIDER;
 
 export const AAVE_WETH_GATEWAY =
-  AaveV3Ethereum.WETH_GATEWAY;
+  AaveV3Sepolia.WETH_GATEWAY;
 
 export const TOKENS = {
   USDC:
-    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const,
-
-  WETH:
-    "0xC02aaA39b223FE8D0A0E5C4F27eAD9083C756Cc2" as const,
+    "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d" as const,
 
   DAI:
-    "0x6B175474E89094C44Da98b954EedeAC495271d0F" as const,
+    "0xDF1742fE5b0bFc12331D8EAec6b478DfDbD31464" as const,
 
   USDT:
-    "0xdAC17F958D2ee523a2206206994597C13D831ec7" as const,
+    "0xEc8CC1F13418f98d0E7B3dF9B27D8F6b1F5B4Bf6" as const,
+
+  WETH:
+    "0xE50fA9b3c56FfB159cB0FCA61F5c9D750e8128c8" as const,
 };
 
