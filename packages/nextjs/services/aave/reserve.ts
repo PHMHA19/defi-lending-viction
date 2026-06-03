@@ -17,11 +17,16 @@ import {
 
 
 
+
 import type {
   ReserveData,
   RawReserveData,
   ReserveConfigurationData,
+  RawUserReserveData,
+  UserReserveData,
 } from "~~/types/aave";
+
+
 
 
 
@@ -77,6 +82,33 @@ export async function getReserveConfigurationData(
         "getReserveConfigurationData",
 
       args: [asset],
+    },
+  );
+}
+
+
+export async function getUserReserveData(
+  asset: `0x${string}`,
+
+  user:
+    `0x${string}`,
+) {
+  return await readContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL_DATA_PROVIDER,
+
+      abi:
+        poolDataProviderAbi,
+
+      functionName:
+        "getUserReserveData",
+
+      args: [
+        asset,
+        user,
+      ],
     },
   );
 }
@@ -223,6 +255,77 @@ function mapReserveData(
 
 
 
+function mapUserReserveData(
+  reserve: {
+    symbol: string;
+
+    address: `0x${string}`;
+
+    decimals: number;
+  },
+
+  userReserveData: any,
+): UserReserveData {
+
+  const normalizedUserReserveData:
+    RawUserReserveData = {
+    currentATokenBalance:
+      userReserveData[0],
+
+    currentStableDebt:
+      userReserveData[1],
+
+    currentVariableDebt:
+      userReserveData[2],
+
+    principalStableDebt:
+      userReserveData[3],
+
+    scaledVariableDebt:
+      userReserveData[4],
+
+    stableBorrowRate:
+      userReserveData[5],
+
+    liquidityRate:
+      userReserveData[6],
+
+    stableRateLastUpdated:
+      userReserveData[7],
+
+    usageAsCollateralEnabled:
+      userReserveData[8],
+  };
+
+  return {
+    asset:
+      reserve.address,
+
+    symbol:
+      reserve.symbol,
+
+    decimals:
+      reserve.decimals,
+
+    supplied:
+      normalizedUserReserveData
+        .currentATokenBalance,
+
+    stableDebt:
+      normalizedUserReserveData
+        .currentStableDebt,
+
+    variableDebt:
+      normalizedUserReserveData
+        .currentVariableDebt,
+
+    usageAsCollateralEnabled:
+      normalizedUserReserveData
+        .usageAsCollateralEnabled,
+  };
+}
+
+
 
 
 
@@ -291,5 +394,90 @@ export async function getAllReserveData() {
       },
     ),
   );
+}
+
+
+export async function
+getUserPositions(
+  user:
+    `0x${string}`,
+) {
+  /**
+   * Load all reserves
+   */
+  const reserveAddresses =
+    await getReservesList();
+
+  /**
+   * Limit reserves
+   * for localhost performance
+   */
+  const limitedReserves =
+    reserveAddresses.slice(
+      0,
+      8,
+    );
+
+
+  const positions =
+    await Promise.all(
+      limitedReserves.map(
+
+      async asset => {
+        /**
+         * Load token metadata
+         */
+        const metadata =
+          await getTokenMetadata(
+            asset,
+          );
+
+        /**
+         * Load user reserve data
+         */
+        const userReserveData =
+          await getUserReserveData(
+            asset,
+            user,
+          );
+
+        const position =
+          mapUserReserveData(
+            {
+              symbol:
+                metadata.symbol,
+
+              address:
+                asset,
+
+              decimals:
+                metadata.decimals,
+            },
+
+            userReserveData,
+          );
+
+        const hasSupply =
+          position.supplied > 0n;
+
+        const hasDebt =
+          position.variableDebt > 0n ||
+          position.stableDebt > 0n;
+
+        if (
+          hasSupply ||
+          hasDebt
+        ) {
+          return position;
+        }
+
+        return null;
+
+      }, ), );
+
+return positions.filter(
+  Boolean,
+) as UserReserveData[];
+
 }
 

@@ -100,3 +100,71 @@ export type UserAccountData = {
   healthFactor: string;
 };
 
+
+export type RawUserReserveData = {
+  currentATokenBalance:
+    bigint;
+
+  currentStableDebt:
+    bigint;
+
+  currentVariableDebt:
+    bigint;
+
+  principalStableDebt:
+    bigint;
+
+  scaledVariableDebt:
+    bigint;
+
+  stableBorrowRate:
+    bigint;
+
+  liquidityRate:
+    bigint;
+
+  stableRateLastUpdated:
+    bigint;
+
+  usageAsCollateralEnabled:
+    boolean;
+};
+
+export type UserReserveData = {
+  asset:
+    `0x${string}`;
+
+  symbol:
+    string;
+
+  decimals:
+    number;
+
+  supplied:
+    bigint;
+
+  stableDebt:
+    bigint;
+
+  variableDebt:
+    bigint;
+
+  usageAsCollateralEnabled:
+    boolean;
+};
+
+
+export type WalletBalance = {
+  asset:
+    `0x${string}`;
+
+  symbol:
+    string;
+
+  decimals:
+    number;
+
+  balance:
+    bigint;
+};
+

@@ -140,5 +140,126 @@ export async function getReservesList(): Promise<
 
 
 
+export async function
+borrowAsset(
+  tokenAddress:
+    `0x${string}`,
+
+  amount:
+    bigint,
+
+  userAddress:
+    `0x${string}`,
+) {
+  return writeContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL,
+
+      abi:
+        poolAbi,
+
+      functionName:
+        "borrow",
+
+      args: [
+        tokenAddress,
+
+        amount,
+
+        /**
+         * 2 = variable rate
+         */
+        2n,
+
+        /**
+         * referral code
+         */
+        0,
+
+        userAddress,
+      ],
+    },
+  );
+}
+
+
+export async function
+withdrawAsset(
+  tokenAddress:
+    `0x${string}`,
+
+  amount:
+    bigint,
+
+  userAddress:
+    `0x${string}`,
+) {
+  return writeContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL,
+
+      abi:
+        poolAbi,
+
+      functionName:
+        "withdraw",
+
+      args: [
+        tokenAddress,
+
+        amount,
+
+        userAddress,
+      ],
+    },
+  );
+}
+
+
+export async function
+repayAsset(
+  tokenAddress:
+    `0x${string}`,
+
+  amount:
+    bigint,
+
+  userAddress:
+    `0x${string}`,
+) {
+  return writeContract(
+    wagmiConfig,
+    {
+      address:
+        AAVE_POOL,
+
+      abi:
+        poolAbi,
+
+      functionName:
+        "repay",
+
+      args: [
+        tokenAddress,
+
+        amount,
+
+        /**
+         * variable debt
+         */
+        2n,
+
+        userAddress,
+      ],
+    },
+  );
+}
+
+
+
 
 

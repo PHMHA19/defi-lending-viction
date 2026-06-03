@@ -10,6 +10,16 @@ import {
   erc20Abi,
 } from "./erc20Abi";
 
+
+import type {
+  WalletBalance,
+} from "~~/types/aave";
+
+import {
+  getReservesList,
+} from "./pool";
+
+
 export type TokenMetadata =
   {
     address: `0x${string}`;
@@ -83,5 +93,99 @@ export async function getTokenMetadata(
     decimals:
       Number(decimals),
   };
+}
+
+
+export async function
+getTokenBalance(
+  tokenAddress:
+    `0x${string}`,
+
+  user:
+    `0x${string}`,
+) {
+  return await readContract(
+    wagmiConfig,
+    {
+      address:
+        tokenAddress,
+
+      abi:
+        erc20Abi,
+
+      functionName:
+        "balanceOf",
+
+      args: [user],
+    },
+  );
+}
+
+
+export async function
+getWalletBalances(
+  user:
+    `0x${string}`,
+): Promise<
+  WalletBalance[]
+> {
+
+  /**
+   * Load reserve assets
+   */
+  const reserveAddresses =
+    await getReservesList();
+
+  /**
+   * Limit reserves
+   * for localhost performance
+   */
+  const limitedReserves =
+    reserveAddresses.slice(
+      0,
+      8,
+    );
+
+  const balances =
+    await Promise.all(
+      limitedReserves.map(
+        async asset => {
+
+          /**
+           * Load metadata
+           */
+          const metadata =
+            await getTokenMetadata(
+              asset,
+            );
+
+          /**
+           * Load balance
+           */
+          const balance =
+            await getTokenBalance(
+              asset,
+              user,
+            );
+
+          return {
+            asset,
+
+            symbol:
+              metadata.symbol,
+
+            decimals:
+              metadata.decimals,
+
+            balance,
+          };
+        },
+      ),
+    );
+
+  return balances.filter(
+    balance =>
+      balance.balance > 0n,
+  );
 }
 

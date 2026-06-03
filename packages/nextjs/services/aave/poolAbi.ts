@@ -72,5 +72,131 @@ export const poolAbi = [
         type: "address[]",
       },
     ],
-  }
+  },
+  
+  {
+    type: "function",
+
+    name: "borrow",
+
+    stateMutability:
+      "nonpayable",
+
+    inputs: [
+      {
+        name: "asset",
+
+        type: "address",
+      },
+
+      {
+        name: "amount",
+
+        type: "uint256",
+      },
+
+      {
+        name:
+          "interestRateMode",
+
+        type: "uint256",
+      },
+
+      {
+        name:
+          "referralCode",
+
+        type: "uint16",
+      },
+
+      {
+        name:
+          "onBehalfOf",
+
+        type: "address",
+      },
+    ],
+
+    outputs: [],
+  },
+
+  {
+    type: "function",
+
+    name: "withdraw",
+
+    stateMutability:
+      "nonpayable",
+
+    inputs: [
+      {
+        name: "asset",
+
+        type: "address",
+      },
+
+      {
+        name: "amount",
+
+        type: "uint256",
+      },
+
+      {
+        name: "to",
+
+        type: "address",
+      },
+    ],
+
+    outputs: [
+      {
+        type: "uint256",
+      },
+    ],
+  },
+
+  
+  {
+    type: "function",
+
+    name: "repay",
+
+    stateMutability:
+      "nonpayable",
+
+    inputs: [
+      {
+        name: "asset",
+
+        type: "address",
+      },
+
+      {
+        name: "amount",
+
+        type: "uint256",
+      },
+
+      {
+        name:
+          "interestRateMode",
+
+        type: "uint256",
+      },
+
+      {
+        name:
+          "onBehalfOf",
+
+        type: "address",
+      },
+    ],
+
+    outputs: [
+      {
+        type: "uint256",
+      },
+    ],
+  },
+
 ] as const;
